@@ -1,6 +1,7 @@
 
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
 let myName = localStorage.getItem('qse_myname') || '';
+let sessionToken = localStorage.getItem('qse_session') || '';
 let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null };
 let ws = null;
 let lastChatCount = 0;
@@ -36,7 +37,7 @@ function connect(){
   ws.onopen = ()=>{
     badge.classList.add('on');
     text.textContent = 'Online — conectado ao servidor';
-    if(myName) ws.send(JSON.stringify({ type:'join', name: myName }));
+    if(myName) setTimeout(()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({ type:'join', name: myName, token: sessionToken })); }, 150);
   };
   ws.onclose = ()=>{
     badge.classList.remove('on');
@@ -46,6 +47,7 @@ function connect(){
   ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
   ws.onmessage = ev=>{
     const msg = JSON.parse(ev.data);
+    if(msg.type === 'joined'){ sessionToken = msg.token || sessionToken; localStorage.setItem('qse_session', sessionToken); return; }
     if(msg.type === 'state'){ state = msg.state; render(); }
     if(msg.type === 'error'){ showError(msg.message); }
   };
@@ -67,7 +69,7 @@ function render(){
   document.getElementById('chat-panel').classList.remove('active');
   if(!state.players.includes(myName)){
     // fomos removidos (ou servidor reiniciou) — reentra
-    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName }));
+    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName, token: sessionToken }));
     switchStage('stage-join');
     return;
   }
@@ -217,7 +219,7 @@ document.getElementById('join-btn').onclick = ()=>{
   if(!v) { document.getElementById('join-error').textContent = 'Digite seu nome.'; return; }
   myName = v;
   localStorage.setItem('qse_myname', v);
-  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: v }));
+  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: v, token: sessionToken }));
 };
 document.getElementById('name-input').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('join-btn').click(); }
@@ -260,6 +262,7 @@ document.getElementById('finish-room-btn').onclick = ()=>{
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
   localStorage.removeItem('qse_myname');
+  localStorage.removeItem('qse_session');
   myName = '';
   switchStage('stage-join');
 }

@@ -15,6 +15,7 @@ let state = {
   host: null
 };
 const socketNames = new Map();
+const playerTokens = new Map();
 const lastChatAt = new Map();
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
@@ -113,12 +114,36 @@ wss.on('connection', ws => {
 
     if(msg.type==='join'){
       const name=String(msg.name||'').trim().slice(0,24);
+      const token=String(msg.token||'');
       if(!name) return sendError(ws,'Digite um nome.');
       if(socketNames.has(ws)) return sendError(ws,'Você já está conectado.');
-      if(state.players.includes(name)) return sendError(ws,'Já tem alguém com esse nome no grupo.');
+
+      if(state.players.includes(name)){
+        // Permite que a mesma pessoa recarregue a página sem perder a vaga.
+        // O token fica no localStorage do navegador e impede que outra pessoa
+        // simplesmente assuma o mesmo nome.
+        if(!token || playerTokens.get(name)!==token) return sendError(ws,'Já tem alguém com esse nome no grupo.');
+        for(const [oldWs, oldName] of socketNames.entries()){
+          if(oldName===name){
+            socketNames.delete(oldWs);
+            lastChatAt.delete(oldWs);
+            try { oldWs.close(); } catch {}
+            break;
+          }
+        }
+        socketNames.set(ws,name);
+        ws.send(JSON.stringify({type:'joined',name,token}));
+        sendState(ws);
+        broadcast();
+        return;
+      }
+
+      const newToken=require('crypto').randomUUID();
+      playerTokens.set(name,newToken);
       socketNames.set(ws,name); state.players.push(name); state.scores[name]=state.scores[name]||0;
       if(!state.host) state.host=name;
       if(state.phase==='playing') assignNewPlayer(name);
+      ws.send(JSON.stringify({type:'joined',name,token:newToken}));
       broadcast(); return;
     }
 
@@ -129,7 +154,7 @@ wss.on('connection', ws => {
       if(state.assignments) delete state.assignments[name];
       if(state.pendingQuestion && (state.pendingQuestion.asker===name || state.pendingQuestion.target===name)) state.pendingQuestion=null;
       if(name===state.host) state.host=state.players[0]||null;
-      socketNames.delete(ws); lastChatAt.delete(ws);
+      socketNames.delete(ws); lastChatAt.delete(ws); playerTokens.delete(name);
       if(!state.players.length) resetRoom();
       else { if(oldIndex>=0 && oldIndex<state.turnIndex) state.turnIndex--; state.turnIndex%=state.players.length; }
       broadcast(); return;
@@ -211,7 +236,7 @@ wss.on('connection', ws => {
     if(state.assignments) delete state.assignments[name];
     if(state.pendingQuestion && (state.pendingQuestion.asker===name||state.pendingQuestion.target===name)) state.pendingQuestion=null;
     if(name===state.host) state.host=state.players[0]||null;
-    socketNames.delete(ws); lastChatAt.delete(ws);
+    socketNames.delete(ws); lastChatAt.delete(ws); playerTokens.delete(name);
     if(!state.players.length) resetRoom();
     else { if(oldIndex>=0&&oldIndex<state.turnIndex) state.turnIndex--; state.turnIndex%=state.players.length; }
     broadcast();
