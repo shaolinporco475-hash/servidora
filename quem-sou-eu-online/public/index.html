@@ -47,6 +47,17 @@ ul.chips li.me{border-color:var(--accent);color:var(--accent)}
 .result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
 .result-list li b{color:var(--accent)}
 .chat-panel{display:none}
+.turn-card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px}
+.turn-name{color:var(--accent);font-size:20px;font-weight:600;text-align:center}
+.guess-row{display:flex;flex-direction:column;gap:8px}
+.guess-actions{display:flex;gap:8px}
+.guess-actions button{flex:1}
+.answer-box{display:flex;flex-direction:column;gap:10px}
+.answer-buttons{display:flex;gap:8px}
+.answer-buttons button{flex:1}
+.answer-yes{background:var(--ok);}
+.answer-no{background:var(--accent2);color:white;}
+.status{font-size:13px;color:var(--muted);text-align:center;line-height:1.4}
 .chat-panel.active{display:flex}
 .chat-msgs{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;padding-right:2px}
 .chat-msg{font-size:14px;line-height:1.4}
@@ -89,9 +100,31 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
   </div>
 
   <div class="stage" id="stage-result">
-    <p class="sub" style="margin:0">Todo mundo já sabe seu nome secreto — só você não!</p>
+    <p class="sub" style="margin:0">Cada jogador recebe um turno. Escolha alguém e tente adivinhar o nome secreto dele.</p>
+    <div class="turn-card">
+      <div class="status">Turno de</div>
+      <div class="turn-name" id="turn-name">—</div>
+    </div>
+    <div class="card" id="guess-card">
+      <label>Seu chute <span style="color:var(--muted)">(1 por vez)</span></label>
+      <div class="guess-row">
+        <select id="target-input" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none"></select>
+        <input type="text" id="guess-input" placeholder="Quem você acha que é?" maxlength="80">
+        <button id="guess-btn">🎯 Enviar chute</button>
+      </div>
+      <p class="status" id="guess-status"></p>
+    </div>
+    <div class="card" id="answer-card" style="display:none">
+      <div class="answer-box">
+        <div class="status"><b id="answer-guesser">—</b> está tentando adivinhar seu nome:</div>
+        <div class="turn-name" id="answer-guess">—</div>
+        <div class="answer-buttons">
+          <button class="answer-yes" id="answer-yes">SIM</button>
+          <button class="answer-no" id="answer-no">NÃO</button>
+        </div>
+      </div>
+    </div>
     <ul class="result-list" id="result-list"></ul>
-    <button id="redraw-btn">Sortear de novo</button>
     <button class="ghost" id="leave-btn-2">Sair do grupo</button>
   </div>
 
@@ -113,6 +146,7 @@ let myName = localStorage.getItem('qse_myname') || '';
 let state = { players: [], assignments: null, phase: 'lobby', chat: [] };
 let ws = null;
 let lastChatCount = 0;
+let chatCooldownUntil = 0;
 
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -180,15 +214,8 @@ function render(){
     switchStage('stage-join');
     return;
   }
-  if(state.phase === 'revealed' && state.assignments){
-    const ul = document.getElementById('result-list');
-    ul.innerHTML = '';
-    state.players.filter(p=>p!==myName).forEach(p=>{
-      const li = document.createElement('li');
-      const secret = state.assignments[p] || '?';
-      li.innerHTML = '<span>'+p+'</span><b>'+secret+'</b>';
-      ul.appendChild(li);
-    });
+  if(state.phase === 'playing' && state.assignments){
+    renderGame();
     switchStage('stage-result');
   } else {
     const list = document.getElementById('lobby-players');
@@ -202,6 +229,52 @@ function render(){
     document.getElementById('draw-btn').disabled = state.players.length < 2;
     switchStage('stage-lobby');
   }
+}
+
+function renderGame(){
+  const turnName = state.players[state.turnIndex] || '—';
+  document.getElementById('turn-name').textContent = turnName + (turnName === myName ? ' (seu turno)' : '');
+
+  const target = document.getElementById('target-input');
+  const current = target.value;
+  target.innerHTML = '';
+  state.players.filter(p => p !== myName).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p; opt.textContent = p; target.appendChild(opt);
+  });
+  if(state.players.includes(current) && current !== myName) target.value = current;
+
+  const isMyTurn = turnName === myName;
+  const pending = state.pendingGuess;
+  const isResponder = pending && pending.target === myName;
+  const isGuesser = pending && pending.guesser === myName;
+
+  document.getElementById('guess-btn').disabled = !isMyTurn || !!pending;
+  document.getElementById('target-input').disabled = !isMyTurn || !!pending;
+  document.getElementById('guess-input').disabled = !isMyTurn || !!pending;
+  document.getElementById('answer-card').style.display = isResponder ? 'flex' : 'none';
+  document.getElementById('guess-card').style.display = isResponder ? 'none' : 'flex';
+
+  const status = document.getElementById('guess-status');
+  if (isGuesser) status.textContent = 'Seu chute foi enviado. Aguarde a resposta.';
+  else if (pending) status.textContent = 'Aguarde a resposta antes de continuar.';
+  else if (!isMyTurn) status.textContent = 'Aguarde seu turno.';
+  else status.textContent = 'Você pode fazer um chute. Depois da resposta, SIM mantém seu turno e NÃO passa para o próximo.';
+
+  if (isResponder) {
+    document.getElementById('answer-guesser').textContent = pending.guesser;
+    document.getElementById('answer-guess').textContent = pending.guess || '—';
+  }
+
+  const ul = document.getElementById('result-list');
+  ul.innerHTML = '';
+  state.players.filter(p=>p!==myName).forEach(p=>{
+    const li = document.createElement('li');
+    const secret = state.assignments[p] || '?';
+    const span = document.createElement('span'); span.textContent = p;
+    const b = document.createElement('b'); b.textContent = secret;
+    li.append(span,b); ul.appendChild(li);
+  });
 }
 
 function renderChat(){
@@ -221,11 +294,13 @@ function renderChat(){
   }
 }
 function sendChat(){
+  if(Date.now() < chatCooldownUntil) return;
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if(!text || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type:'chat', name: myName, text }));
+  ws.send(JSON.stringify({ type:'chat', text }));
   input.value = '';
+  chatCooldownUntil = Date.now() + 3000;
 }
 document.getElementById('chat-send').onclick = sendChat;
 document.getElementById('chat-input').addEventListener('keydown', e=>{
@@ -248,7 +323,18 @@ document.getElementById('draw-btn').onclick = ()=>{
   const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
   ws.send(JSON.stringify({ type:'draw', categories: cats }));
 };
-document.getElementById('redraw-btn').onclick = document.getElementById('draw-btn').onclick;
+document.getElementById('guess-btn').onclick = ()=>{
+  const target = document.getElementById('target-input').value;
+  const guess = document.getElementById('guess-input').value.trim();
+  if(!target || !guess || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'guess', target, guess }));
+  document.getElementById('guess-input').value = '';
+};
+document.getElementById('guess-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('guess-btn').click(); }
+});
+document.getElementById('answer-yes').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'yes'})); };
+document.getElementById('answer-no').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'no'})); };
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
   localStorage.removeItem('qse_myname');

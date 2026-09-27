@@ -10,7 +10,9 @@ const CATEGORY_POOLS = {
 };
 
 // Estado único, compartilhado por todo mundo que abrir o link (sempre o mesmo grupo).
-let state = { players: [], assignments: null, phase: 'lobby', chat: [] };
+let state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingGuess: null };
+const socketNames = new Map();
+const lastChatAt = new Map();
 
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
@@ -27,11 +29,26 @@ function shuffle(arr) {
   return a;
 }
 
+function sendState(ws) {
+  if (ws.readyState !== 1) return;
+  const name = socketNames.get(ws);
+  const publicState = { ...state, assignments: {} };
+  if (state.assignments) {
+    Object.entries(state.assignments).forEach(([player, secret]) => {
+      if (player !== name) publicState.assignments[player] = secret;
+    });
+  }
+  publicState.mySecret = name && state.assignments ? (state.assignments[name] || null) : null;
+  if (state.pendingGuess) {
+    publicState.pendingGuess = { ...state.pendingGuess };
+    if (state.pendingGuess.target !== name) publicState.pendingGuess.guess = null;
+    if (state.pendingGuess.guesser !== name && state.pendingGuess.target !== name) publicState.pendingGuess.guesser = null;
+  }
+  ws.send(JSON.stringify({ type: 'state', state: publicState }));
+}
+
 function broadcast() {
-  const payload = JSON.stringify({ type: 'state', state });
-  wss.clients.forEach(client => {
-    if (client.readyState === 1) client.send(payload);
-  });
+  wss.clients.forEach(client => sendState(client));
 }
 
 function sendError(ws, message) {
@@ -39,7 +56,7 @@ function sendError(ws, message) {
 }
 
 wss.on('connection', ws => {
-  ws.send(JSON.stringify({ type: 'state', state }));
+  sendState(ws);
 
   ws.on('message', raw => {
     let msg;
@@ -48,16 +65,25 @@ wss.on('connection', ws => {
     if (msg.type === 'join') {
       const name = String(msg.name || '').trim().slice(0, 24);
       if (!name) return sendError(ws, 'Digite um nome.');
+      if (socketNames.has(ws)) return sendError(ws, 'Você já está conectado.');
       if (state.players.includes(name)) return sendError(ws, 'Já tem alguém com esse nome no grupo.');
+      socketNames.set(ws, name);
       state.players.push(name);
       broadcast();
       return;
     }
 
     if (msg.type === 'leave') {
-      const name = String(msg.name || '');
+      const name = socketNames.get(ws);
+      if (!name) return;
+      const oldIndex = state.players.indexOf(name);
       state.players = state.players.filter(p => p !== name);
       if (state.assignments) delete state.assignments[name];
+      if (state.pendingGuess && (state.pendingGuess.guesser === name || state.pendingGuess.target === name)) state.pendingGuess = null;
+      if (state.players.length === 0) { state.phase = 'lobby'; state.assignments = null; state.turnIndex = 0; }
+      else if (oldIndex >= 0 && oldIndex < state.turnIndex) state.turnIndex--;
+      if (state.players.length) state.turnIndex = state.turnIndex % state.players.length;
+      socketNames.delete(ws);
       broadcast();
       return;
     }
@@ -73,19 +99,66 @@ wss.on('connection', ws => {
       const assignments = {};
       state.players.forEach((p, i) => { assignments[p] = names[i]; });
       state.assignments = assignments;
-      state.phase = 'revealed';
+      state.phase = 'playing';
+      state.turnIndex = 0;
+      state.pendingGuess = null;
       broadcast();
       return;
     }
+    if (msg.type === 'guess') {
+      const guesser = socketNames.get(ws);
+      const target = String(msg.target || '').trim();
+      const guess = String(msg.guess || '').trim().slice(0, 80);
+      if (!guesser || state.phase !== 'playing') return;
+      if (state.players[state.turnIndex] !== guesser) return sendError(ws, 'Não é seu turno.');
+      if (state.pendingGuess) return sendError(ws, 'Aguarde a resposta do jogador.');
+      if (!target || target === guesser || !state.players.includes(target)) return sendError(ws, 'Escolha um jogador válido.');
+      if (!guess) return sendError(ws, 'Digite um chute.');
+      state.pendingGuess = { guesser, target, guess };
+      broadcast();
+      return;
+    }
+
+    if (msg.type === 'answer') {
+      const responder = socketNames.get(ws);
+      if (!responder || !state.pendingGuess) return;
+      if (state.pendingGuess.target !== responder) return sendError(ws, 'Só o jogador que recebeu o chute pode responder.');
+      if (msg.answer !== 'yes' && msg.answer !== 'no') return;
+      if (msg.answer === 'no') {
+        state.turnIndex = (state.turnIndex + 1) % state.players.length;
+      }
+      state.pendingGuess = null;
+      broadcast();
+      return;
+    }
+
     if (msg.type === 'chat') {
-      const name = String(msg.name || '').trim().slice(0, 24);
+      const name = socketNames.get(ws);
       const text = String(msg.text || '').trim().slice(0, 300);
+      const now = Date.now();
       if (!name || !text || !state.players.includes(name)) return;
-      state.chat.push({ name, text, ts: Date.now() });
+      const last = lastChatAt.get(ws) || 0;
+      if (now - last < 3000) return sendError(ws, 'Aguarde 3 segundos antes de enviar outra mensagem.');
+      lastChatAt.set(ws, now);
+      state.chat.push({ name, text, ts: now });
       if (state.chat.length > 100) state.chat = state.chat.slice(-100);
       broadcast();
       return;
     }
+  });
+
+  ws.on('close', () => {
+    const name = socketNames.get(ws);
+    if (!name) return;
+    const oldIndex = state.players.indexOf(name);
+    state.players = state.players.filter(p => p !== name);
+    if (state.assignments) delete state.assignments[name];
+    if (state.pendingGuess && (state.pendingGuess.guesser === name || state.pendingGuess.target === name)) state.pendingGuess = null;
+    socketNames.delete(ws);
+    lastChatAt.delete(ws);
+    if (!state.players.length) { state.phase = 'lobby'; state.assignments = null; state.turnIndex = 0; }
+    else { if (oldIndex >= 0 && oldIndex < state.turnIndex) state.turnIndex--; state.turnIndex %= state.players.length; }
+    broadcast();
   });
 });
 
