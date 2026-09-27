@@ -7,6 +7,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 :root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
   --bg:#f3f5fb;--surface:#ffffff;--surface2:#f8f9fd;--ink:#25253a;--muted:#7d8096;
   --purple:#7657e8;--purple-dark:#5940c5;--yellow:#ffc857;--green:#35b978;--red:#ed6672;
   --line:#e7e8f0;--shadow:0 10px 30px rgba(39,32,78,.08);--radius:18px;
@@ -21,8 +22,8 @@ html.dark .answer-question{background:#29223e;border-color:#4a3d70}
 html.dark #finished-card{background:#292718;border-color:#5a4b1f}
 
 *{box-sizing:border-box}
-html{min-height:100%;background:var(--bg)}
-body{margin:0;min-height:100vh;font-family:'Nunito',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:radial-gradient(circle at 50% -10%,#fff 0,#f7f8fd 38%,#eef1f8 100%);padding:0 18px 34px}
+html{min-height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;font-family:'Nunito',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:radial-gradient(circle at 50% -10%,#fff 0,#f7f8fd 38%,#eef1f8 100%);padding:0 18px calc(34px + env(safe-area-inset-bottom,0px))}
 button,input,select{font:inherit}
 button{border:0;cursor:pointer;font-weight:800;transition:.16s ease;touch-action:manipulation}
 button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.02)}
@@ -35,7 +36,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .connection{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:999px;box-shadow:0 3px 12px rgba(30,25,60,.04)}
 .topbar-right{display:flex;align-items:center;gap:8px}.theme-btn{width:42px;min-height:42px;height:42px;padding:0;border-radius:50%;font-size:18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 12px rgba(30,25,60,.04)}
 .connection .dot{width:8px;height:8px;border-radius:50%;background:#b8bbc8}.connection.on .dot{background:var(--green)}
-.hero{padding:18px 0 24px}.hero h1{margin:0;font-size:clamp(32px,6vw,52px);line-height:1;font-weight:900;letter-spacing:-1.8px}.hero p{margin:10px 0 0;color:var(--muted);font-size:16px}.hero.game-mode{display:none}
+.hero{padding:20px 0 28px}.hero h1{margin:0;font-size:clamp(32px,6vw,52px);line-height:1;font-weight:900;letter-spacing:-1.8px}.hero p{margin:10px 0 0;color:var(--muted);font-size:16px}
 .stage{display:none}.stage.active{display:flex;flex-direction:column;gap:16px}
 .card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
 .card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;font-size:18px;font-weight:900}.card-title span{font-size:12px;color:var(--muted)}
@@ -56,23 +57,24 @@ button.danger{background:#fff;color:var(--red);border:2px solid #f3cbd0;box-shad
 .lobby-actions{display:flex;gap:10px}.lobby-actions button{flex:1}
 /* jogo */
 #stage-result{gap:16px}
-.players-card{padding-bottom:16px}.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}.player-secret{min-height:72px}
+.players-card{padding-bottom:16px}.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .player-secret{background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px 14px;position:relative;overflow:hidden}.player-secret:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--purple)}
 .player-secret b{display:block;color:var(--purple);font-size:17px;font-weight:900;line-height:1.15}.player-secret span{display:block;color:var(--muted);font-size:12px;margin-top:4px;font-weight:700}
 .result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.result-list li{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}.result-list li b{font-size:15px;color:var(--purple);font-weight:900}.result-list li span{color:var(--muted);font-weight:700}
-.turn-card{background:linear-gradient(135deg,#7657e8,#6749d5);color:#fff;border-radius:18px;padding:18px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 28px rgba(94,69,190,.2);position:relative;overflow:hidden}.turn-card:before{content:'🎯';font-size:25px}.turn-card.my-turn{background:linear-gradient(135deg,#6f4ee6,#5237b8);box-shadow:0 14px 34px rgba(94,69,190,.28)}.turn-card.my-turn:after{content:'SUA VEZ';position:absolute;right:18px;top:10px;font-size:10px;font-weight:900;letter-spacing:1px;color:rgba(255,255,255,.72)}.turn-card .status{color:rgba(255,255,255,.72);text-align:left;font-size:12px;font-weight:800}.turn-name{font-size:21px;font-weight:900}.turn-card .turn-name{color:#fff}
-.game-columns{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);gap:16px;align-items:start}.game-main,.game-side{display:flex;flex-direction:column;gap:16px}.game-side>.card{margin-top:0!important}
+.turn-card{background:linear-gradient(135deg,#7657e8,#6749d5);color:#fff;border-radius:18px;padding:19px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 12px 28px rgba(94,69,190,.2)}
+.turn-card .status{color:rgba(255,255,255,.72);text-align:left}.turn-name{font-size:23px;font-weight:900}.turn-card .turn-name{color:#fff}
+.game-columns{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:16px;align-items:start}
 .question-card-inner,.guess-card-inner{display:flex;flex-direction:column;gap:10px}.question-help{margin:2px 0 0;color:var(--muted);font-size:12px;line-height:1.4}
 .answer-box{display:flex;flex-direction:column;gap:12px}.answer-question{background:#f5f1ff;border:1px solid #ded7fb;border-radius:13px;padding:13px;font-size:16px;font-weight:800}.answer-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answer-yes{background:var(--green)}.answer-no{background:var(--red)}
 .question-history{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:290px;overflow:auto}.question-history li{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.35}.question-history .q{font-weight:800}.question-history .a{color:var(--muted);margin-top:4px;font-weight:700}
 .status{font-size:13px;color:var(--muted);line-height:1.45}.center{text-align:center}
-.chat-panel.active{display:flex;flex-direction:column}.chat-msgs{display:flex;flex-direction:column;gap:7px;max-height:300px;min-height:120px;overflow:auto;padding:2px}.chat-msg{background:var(--surface2);border-radius:11px;padding:8px 10px;font-size:13px;line-height:1.4}.chat-msg b{color:var(--purple)}.chat-msg.me{background:#f2efff}.chat-msg.me b{color:var(--purple)}.chat-empty{margin:0;color:var(--muted);font-size:13px}.chat-send-row{margin-top:10px}
+.chat-panel.active{display:flex;flex-direction:column}.chat-msgs{display:flex;flex-direction:column;gap:7px;max-height:190px;overflow:auto;padding:2px}.chat-msg{background:var(--surface2);border-radius:11px;padding:8px 10px;font-size:13px;line-height:1.4}.chat-msg b{color:var(--purple)}.chat-msg.me{background:#f2efff}.chat-msg.me b{color:var(--purple)}.chat-empty{margin:0;color:var(--muted);font-size:13px}.chat-send-row{margin-top:10px}
 .ranking-list{counter-reset:rank}.ranking-list li{padding:13px 14px}.ranking-list li:first-child{background:#fff8df;border-color:#f1df9d}.ranking-list li b{color:var(--ink)}
 .room-actions{display:flex;justify-content:flex-end;gap:10px}.room-actions button{min-width:170px}.host-note{font-size:12px;color:var(--muted);text-align:right;margin-top:-8px}
-#finished-card{display:flex!important;background:#fffdf4;border-color:#f0dfab;text-align:center;align-items:center}.winner-badge{font-size:12px;color:#8a6c18;font-weight:900;text-transform:uppercase;letter-spacing:1px}.winner-name{font-size:30px;color:#6048c9;font-weight:900}
+#finished-card{background:#fffdf4;border-color:#f0dfab;text-align:center;align-items:center}.winner-badge{font-size:12px;color:#8a6c18;font-weight:900;text-transform:uppercase;letter-spacing:1px}.winner-name{font-size:30px;color:#6048c9;font-weight:900}
 footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
-@media(max-width:760px){body{padding:0 12px 24px}.topbar{height:68px}.brand{font-size:20px}.brand-mark{width:38px;height:38px}.hero{padding:16px 0 18px}.hero h1{font-size:38px}.cat-toggles{grid-template-columns:repeat(2,minmax(0,1fr))}.game-columns{grid-template-columns:1fr}.turn-card{padding:17px 16px}.room-actions{flex-direction:column}.room-actions button{width:100%}.lobby-actions{flex-direction:column}.lobby-actions button{width:100%}.game-side{gap:12px}.chat-send-row{flex-direction:row}.chat-send-row input{min-width:0}.chat-send-row button{width:auto;flex:0 0 auto}.players-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chat-msgs{max-height:240px}}
-@media(max-width:430px){.players-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:16px}.hero h1{font-size:34px}.connection{font-size:0;padding:8px}.connection .dot{width:8px;height:8px}.topbar-right{gap:6px}.cat-toggles{grid-template-columns:repeat(2,minmax(0,1fr))}.cat-toggles label{font-size:12px;padding:10px}.answer-buttons{grid-template-columns:1fr 1fr}.chat-send-row input{font-size:14px}.chat-send-row button{padding:0 13px}}
+@media(max-width:760px){body{padding:0 12px 24px}.topbar{height:72px}.brand{font-size:20px}.brand-mark{width:38px;height:38px}.hero{padding:18px 0 20px}.hero h1{font-size:38px}.cat-toggles{grid-template-columns:1fr}.game-columns{grid-template-columns:1fr}.turn-card{align-items:flex-start;flex-direction:column;gap:5px}.room-actions{flex-direction:column}.room-actions button{width:100%}.lobby-actions,.row{flex-direction:column}.row button{width:100%}.players-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.players-grid{grid-template-columns:1fr}.card{padding:16px}.hero h1{font-size:34px}.connection{font-size:11px}}
 </style>
 </head>
 <body>
@@ -133,7 +135,7 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
     </div>
 
     <div class="game-columns">
-      <div class="game-main">
+      <div>
         <div class="card" id="question-card">
           <div class="card-title"><h2>Faça uma pergunta</h2><span>Seu turno</span></div>
           <div class="question-card-inner">
@@ -152,7 +154,7 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
           </div>
         </div>
       </div>
-      <div class="game-side">
+      <div>
 
     <div class="card" id="answer-card" style="display:none">
       <div class="answer-box">
@@ -169,15 +171,16 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
       <div class="card-title"><h2>Suas perguntas</h2><span>Histórico da rodada</span></div>
       <ul class="question-history" id="question-history"></ul>
     </div>
-  
+      </div>
+    </div>
+
+
     <div class="card chat-panel" id="chat-panel">
       <div class="card-title"><h2>Chat da sala</h2><span>Converse com o grupo</span></div>
       <div class="chat-msgs" id="chat-msgs"></div>
       <div class="row chat-send-row">
         <input type="text" id="chat-input" placeholder="Escreva uma mensagem" maxlength="300">
         <button id="chat-send" class="small">Enviar</button>
-      </div>
-    </div>
       </div>
     </div>
 
@@ -230,7 +233,6 @@ function escapeHtml(s){
 function switchStage(id){
   document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelector('.hero').classList.toggle('game-mode', id === 'stage-result');
 }
 function renderCatToggles(){
   const c = document.getElementById('cat-toggles');
@@ -253,15 +255,15 @@ function connect(){
 
   ws.onopen = ()=>{
     badge.classList.add('on');
-    text.textContent = 'Online';
+    text.textContent = 'Online — conectado ao servidor';
     if(myName) ws.send(JSON.stringify({ type:'join', name: myName }));
   };
   ws.onclose = ()=>{
     badge.classList.remove('on');
-    text.textContent = 'Reconectando…';
+    text.textContent = 'Conexão perdida — tentando de novo…';
     setTimeout(connect, 2000);
   };
-  ws.onerror = ()=>{ text.textContent = 'Reconectando…'; };
+  ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
   ws.onmessage = ev=>{
     const msg = JSON.parse(ev.data);
     if(msg.type === 'state'){ state = msg.state; render(); }
@@ -323,6 +325,14 @@ function renderGame(){
   document.getElementById('finish-room-btn').style.display=state.host===myName?'block':'none';
   document.getElementById('new-round-btn').style.display=finished && state.host===myName?'inline-block':'none';
   document.getElementById('host-note').textContent=state.host===myName?'Você é o líder. Só você pode finalizar a partida.':'';
+  document.getElementById('finished-card').style.display = finished ? 'flex' : 'none';
+  if(finished){
+    const winner = state.winner || '—';
+    document.getElementById('winner-name').textContent = '🏆 ' + winner;
+    document.getElementById('winner-message').textContent = winner === myName
+      ? 'Você acertou e venceu a rodada!'
+      : (state.winner ? winner + ' acertou primeiro.' : '');
+  }
 
   const turnName=state.players[state.turnIndex]||'—';
   if(finished){
@@ -330,16 +340,17 @@ function renderGame(){
     document.getElementById('turn-name').textContent='🏆 '+winner;
     document.querySelector('.turn-card .status').textContent='Fim da rodada';
   } else {
-    document.querySelector('.turn-card .status').textContent=turnName===myName?'Sua vez':'Vez de';
-    document.getElementById('turn-name').textContent=turnName===myName?'Você':turnName;
+    document.querySelector('.turn-card .status').textContent='Vez de';
+    document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
   }
 
   const isMyTurn=turnName===myName;
-  document.querySelector('.turn-card').classList.toggle('my-turn', isMyTurn && !finished);
   const q=state.pendingQuestion;
   const isQResponder=q&&q.asker!==myName;
   const waiting=!!q;
-  ['question-btn','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+  const usedGuess=!!state.iUsedGuess;
+  ['question-btn','question-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+  ['guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting||usedGuess);
 
   document.getElementById('question-card').style.display=finished||isQResponder?'none':'block';
   document.getElementById('guess-card').style.display=finished||isQResponder?'none':'block';
@@ -360,7 +371,7 @@ function renderGame(){
     guessStatus.textContent='';
   } else {
     status.textContent='Faça uma pergunta de SIM ou NÃO para descobrir seu personagem.';
-    guessStatus.textContent='Se você errar a tentativa, o turno passa para o próximo.';
+    guessStatus.textContent=usedGuess ? 'Você já usou sua única tentativa nesta rodada.' : 'Você só pode tentar acertar uma vez. Se errar, o turno passa para o próximo.';
   }
 
   if(isQResponder){
@@ -377,8 +388,10 @@ function renderGame(){
   const ul=document.getElementById('result-list'); ul.innerHTML='';
   state.players.filter(p=>p!==myName).forEach(p=>{
     const li=document.createElement('li');
-    const b=document.createElement('b'); b.textContent=(state.assignments?.[p] || '—')+' : '+p;
-    li.append(b); ul.appendChild(li);
+    li.className='player-secret';
+    const b=document.createElement('b'); b.textContent=state.assignments?.[p] || '—';
+    const span=document.createElement('span'); span.textContent=p;
+    li.append(b,span); ul.appendChild(li);
   });
 
   const hist=document.getElementById('question-history'); hist.innerHTML='';
