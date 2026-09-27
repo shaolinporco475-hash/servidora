@@ -10,7 +10,7 @@ const CATEGORY_POOLS = {
 };
 
 // Estado único, compartilhado por todo mundo que abrir o link (sempre o mesmo grupo).
-let state = { players: [], assignments: null, phase: 'lobby' };
+let state = { players: [], assignments: null, phase: 'lobby', chat: [] };
 
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
@@ -74,6 +74,15 @@ wss.on('connection', ws => {
       state.players.forEach((p, i) => { assignments[p] = names[i]; });
       state.assignments = assignments;
       state.phase = 'revealed';
+      broadcast();
+      return;
+    }
+    if (msg.type === 'chat') {
+      const name = String(msg.name || '').trim().slice(0, 24);
+      const text = String(msg.text || '').trim().slice(0, 300);
+      if (!name || !text || !state.players.includes(name)) return;
+      state.chat.push({ name, text, ts: Date.now() });
+      if (state.chat.length > 100) state.chat = state.chat.slice(-100);
       broadcast();
       return;
     }
