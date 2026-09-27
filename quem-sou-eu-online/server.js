@@ -32,6 +32,39 @@ function assignNewPlayer(name) {
   if (!state.assignments) state.assignments = {};
   state.assignments[name] = availableSecret();
 }
+function normalizeGuess(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function levenshtein(a, b) {
+  const prev = Array.from({length: b.length + 1}, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i];
+    for (let j = 1; j <= b.length; j++) {
+      curr[j] = Math.min(
+        curr[j - 1] + 1,
+        prev[j] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+    for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
+  }
+  return prev[b.length];
+}
+
+function guessMatches(guess, secret) {
+  const a = normalizeGuess(guess);
+  const b = normalizeGuess(secret);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  // Aceita pequenos erros de digitação sem deixar o chute permissivo demais.
+  const maxDistance = b.length <= 6 ? 1 : b.length <= 12 ? 2 : 3;
+  return levenshtein(a, b) <= maxDistance;
+}
 function resetRoom() {
   state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, questionHistory: [], scores: {}, winner: null, host: null };
 }
@@ -120,7 +153,7 @@ wss.on('connection', ws => {
       if(!guess) return sendError(ws,'Digite o personagem que você acha que é.');
 
       const secret=state.assignments?.[guesser] || '';
-      const correct=guess.localeCompare(String(secret),'pt-BR',{sensitivity:'base'})===0;
+      const correct=guessMatches(guess, secret);
       if(correct){
         state.scores[guesser]=(state.scores[guesser]||0)+1;
         state.winner=guesser;
