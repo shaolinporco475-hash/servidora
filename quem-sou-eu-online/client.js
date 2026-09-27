@@ -30,29 +30,55 @@ renderCatToggles();
 
 function connect(){
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  const socket = new WebSocket(proto + '//' + location.host + '/ws');
+  ws = socket;
+  joinSent = false;
   const badge = document.getElementById('mode-badge');
   const text = document.getElementById('mode-text');
 
-  ws.onopen = ()=>{
+  socket.onopen = ()=>{
+    if (ws !== socket) return;
     badge.classList.add('on');
     text.textContent = 'Online — conectado ao servidor';
-    if(myName) setTimeout(()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({ type:'join', name: myName, token: sessionToken })); }, 150);
+    if(myName && !joinSent) {
+      joinSent = true;
+      socket.send(JSON.stringify({ type:'join', name: myName, token: sessionToken }));
+    }
   };
-  ws.onclose = ()=>{
+  socket.onclose = ()=>{
+    if (ws !== socket) return;
+    ws = null;
+    joinSent = false;
     badge.classList.remove('on');
     text.textContent = 'Conexão perdida — tentando de novo…';
-    setTimeout(connect, 2000);
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 2000);
   };
-  ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
-  ws.onmessage = ev=>{
-    const msg = JSON.parse(ev.data);
-    if(msg.type === 'joined'){ sessionToken = msg.token || sessionToken; localStorage.setItem('qse_session', sessionToken); return; }
+  socket.onerror = ()=>{
+    if (ws === socket) text.textContent = 'Erro de conexão — tentando de novo…';
+  };
+  socket.onmessage = ev=>{
+    if (ws !== socket) return;
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { return; }
+    if(msg.type === 'joined'){
+      if(msg.name) myName = msg.name;
+      if(msg.token){ sessionToken = msg.token; localStorage.setItem('qse_session', sessionToken); }
+      joinSent = true;
+      render();
+    }
     if(msg.type === 'state'){ state = msg.state; render(); }
-    if(msg.type === 'error'){ showError(msg.message); }
+    if(msg.type === 'error'){
+      showError(msg.message);
+      // Se o token não for mais válido, permite uma nova entrada com um token novo.
+      if(msg.message === 'Já tem alguém com esse nome no grupo.'){
+        sessionToken = '';
+        localStorage.removeItem('qse_session');
+        joinSent = false;
+      }
+    }
   };
 }
-
 function showError(text){
   const j = document.getElementById('join-error');
   const l = document.getElementById('lobby-error');
