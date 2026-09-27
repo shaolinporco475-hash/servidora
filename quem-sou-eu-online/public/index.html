@@ -100,23 +100,33 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
   </div>
 
   <div class="stage" id="stage-result">
-    <p class="sub" style="margin:0">Cada jogador recebe um turno. Escolha alguém e tente adivinhar o nome secreto dele.</p>
+    <p class="sub" style="margin:0">Cada jogador recebe um turno. Faça perguntas para descobrir quem você é. Quando tiver certeza, tente adivinhar.</p>
     <div class="turn-card">
+      <div class="status">🏆 Ranking da sala</div>
+      <ol class="result-list" id="ranking-list"></ol>
       <div class="status">Turno de</div>
       <div class="turn-name" id="turn-name">—</div>
     </div>
-    <div class="card" id="guess-card">
-      <label>Seu chute <span style="color:var(--muted)">(1 por vez)</span></label>
+    <div class="card" id="question-card">
+      <label>Faça uma pergunta <span style="color:var(--muted)">(1 por vez)</span></label>
       <div class="guess-row">
         <select id="target-input" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none"></select>
-        <input type="text" id="guess-input" placeholder="Quem você acha que é?" maxlength="80">
-        <button id="guess-btn">🎯 Enviar chute</button>
+        <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
+        <button id="question-btn">❓ Fazer pergunta</button>
       </div>
-      <p class="status" id="guess-status"></p>
+      <p class="status" id="question-status"></p>
+    </div>
+    <div class="card" id="guess-card">
+      <label>Quando tiver certeza, tente adivinhar</label>
+      <div class="guess-row">
+        <select id="guess-target-input" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none"></select>
+        <input type="text" id="guess-input" placeholder="Acho que sou..." maxlength="80">
+        <button id="guess-btn">🎯 Tentar adivinhar</button>
+      </div>
     </div>
     <div class="card" id="answer-card" style="display:none">
       <div class="answer-box">
-        <div class="status"><b id="answer-guesser">—</b> está tentando adivinhar seu nome:</div>
+        <div class="status"><b id="answer-guesser">—</b> recebeu uma pergunta:</div>
         <div class="turn-name" id="answer-guess">—</div>
         <div class="answer-buttons">
           <button class="answer-yes" id="answer-yes">SIM</button>
@@ -125,6 +135,12 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
       </div>
     </div>
     <ul class="result-list" id="result-list"></ul>
+    <div class="card" id="finished-card" style="display:none;text-align:center">
+      <div class="status">🎉 Fim da partida</div>
+      <div class="turn-name" id="winner-name">—</div>
+      <p class="status" id="winner-message"></p>
+      <button id="new-round-btn">🎲 Nova partida</button>
+    </div>
     <button class="ghost" id="leave-btn-2">Sair do grupo</button>
   </div>
 
@@ -214,7 +230,7 @@ function render(){
     switchStage('stage-join');
     return;
   }
-  if(state.phase === 'playing' && state.assignments){
+  if((state.phase === 'playing' || state.phase === 'finished') && state.assignments){
     renderGame();
     switchStage('stage-result');
   } else {
@@ -232,38 +248,68 @@ function render(){
 }
 
 function renderGame(){
+  const ranking = document.getElementById('ranking-list');
+  ranking.innerHTML = '';
+  [...state.players].sort((a,b)=>(state.scores?.[b]||0)-(state.scores?.[a]||0)).forEach((p,i)=>{
+    const li=document.createElement('li');
+    const span=document.createElement('span'); span.textContent=(i+1)+'º '+p+(p===myName?' (você)':'');
+    const b=document.createElement('b'); b.textContent=(state.scores?.[p]||0)+' ponto'+((state.scores?.[p]||0)===1?'':'s');
+    li.append(span,b); ranking.appendChild(li);
+  });
+
+  const finished = state.phase === 'finished';
+  document.getElementById('finished-card').style.display = finished ? 'block' : 'none';
+  if(finished){
+    const winner = state.winner || '—';
+    document.getElementById('winner-name').textContent = '🏆 '+winner;
+    document.getElementById('winner-message').textContent = winner === myName ? 'Você descobriu quem era e ganhou 1 ponto!' : winner+' descobriu quem era e ganhou 1 ponto!';
+  }
+
   const turnName = state.players[state.turnIndex] || '—';
   document.getElementById('turn-name').textContent = turnName + (turnName === myName ? ' (seu turno)' : '');
 
   const target = document.getElementById('target-input');
+  const guessTarget = document.getElementById('guess-target-input');
   const current = target.value;
-  target.innerHTML = '';
-  state.players.filter(p => p !== myName).forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p; opt.textContent = p; target.appendChild(opt);
+  const currentGuessTarget = guessTarget.value;
+  [target, guessTarget].forEach(sel=>{
+    sel.innerHTML = '';
+    state.players.filter(p => p !== myName).forEach(p => {
+      const opt = document.createElement('option'); opt.value=p; opt.textContent=p; sel.appendChild(opt);
+    });
   });
   if(state.players.includes(current) && current !== myName) target.value = current;
+  if(state.players.includes(currentGuessTarget) && currentGuessTarget !== myName) guessTarget.value = currentGuessTarget;
 
   const isMyTurn = turnName === myName;
-  const pending = state.pendingGuess;
-  const isResponder = pending && pending.target === myName;
-  const isGuesser = pending && pending.guesser === myName;
+  const question = state.pendingQuestion;
+  const pendingGuess = state.pendingGuess;
+  const isQuestionResponder = question && question.target === myName;
+  const isGuessResponder = pendingGuess && pendingGuess.target === myName;
+  const isWaiting = !!question || !!pendingGuess;
 
-  document.getElementById('guess-btn').disabled = !isMyTurn || !!pending;
-  document.getElementById('target-input').disabled = !isMyTurn || !!pending;
-  document.getElementById('guess-input').disabled = !isMyTurn || !!pending;
-  document.getElementById('answer-card').style.display = isResponder ? 'flex' : 'none';
-  document.getElementById('guess-card').style.display = isResponder ? 'none' : 'flex';
+  document.getElementById('question-btn').disabled = finished || !isMyTurn || isWaiting;
+  document.getElementById('target-input').disabled = finished || !isMyTurn || isWaiting;
+  document.getElementById('question-input').disabled = finished || !isMyTurn || isWaiting;
+  document.getElementById('guess-btn').disabled = finished || !isMyTurn || isWaiting;
+  document.getElementById('guess-target-input').disabled = finished || !isMyTurn || isWaiting;
+  document.getElementById('guess-input').disabled = finished || !isMyTurn || isWaiting;
+  document.getElementById('answer-card').style.display = (!finished && (isQuestionResponder || isGuessResponder)) ? 'flex' : 'none';
+  document.getElementById('question-card').style.display = finished || isQuestionResponder || isGuessResponder ? 'none' : 'flex';
+  document.getElementById('guess-card').style.display = finished || isQuestionResponder || isGuessResponder ? 'none' : 'flex';
 
-  const status = document.getElementById('guess-status');
-  if (isGuesser) status.textContent = 'Seu chute foi enviado. Aguarde a resposta.';
-  else if (pending) status.textContent = 'Aguarde a resposta antes de continuar.';
+  const status = document.getElementById('question-status');
+  if (finished) status.textContent = 'A partida terminou. O ranking continua salvo na sala.';
+  else if (question && question.asker === myName) status.textContent = 'Sua pergunta foi enviada. Aguarde a resposta.';
+  else if (pendingGuess && pendingGuess.guesser === myName) status.textContent = 'Sua tentativa foi enviada. Aguarde a resposta.';
+  else if (isWaiting) status.textContent = 'Aguarde a resposta antes de continuar.';
   else if (!isMyTurn) status.textContent = 'Aguarde seu turno.';
-  else status.textContent = 'Você pode fazer um chute. Depois da resposta, SIM mantém seu turno e NÃO passa para o próximo.';
+  else status.textContent = 'Faça perguntas de SIM/NÃO para descobrir quem você é. Quando souber, tente adivinhar.';
 
-  if (isResponder) {
-    document.getElementById('answer-guesser').textContent = pending.guesser;
-    document.getElementById('answer-guess').textContent = pending.guess || '—';
+  if (isQuestionResponder || isGuessResponder) {
+    const pending = isQuestionResponder ? question : pendingGuess;
+    document.getElementById('answer-guesser').textContent = isQuestionResponder ? pending.asker : pending.guesser;
+    document.getElementById('answer-guess').textContent = isQuestionResponder ? pending.question : 'Acho que sou: '+pending.guess;
   }
 
   const ul = document.getElementById('result-list');
@@ -323,18 +369,32 @@ document.getElementById('draw-btn').onclick = ()=>{
   const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
   ws.send(JSON.stringify({ type:'draw', categories: cats }));
 };
-document.getElementById('guess-btn').onclick = ()=>{
+document.getElementById('question-btn').onclick = ()=>{
   const target = document.getElementById('target-input').value;
+  const question = document.getElementById('question-input').value.trim();
+  if(!target || !question || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'question', target, question }));
+  document.getElementById('question-input').value = '';
+};
+document.getElementById('guess-btn').onclick = ()=>{
+  const target = document.getElementById('guess-target-input').value;
   const guess = document.getElementById('guess-input').value.trim();
   if(!target || !guess || !ws || ws.readyState !== 1) return;
   ws.send(JSON.stringify({ type:'guess', target, guess }));
   document.getElementById('guess-input').value = '';
 };
+document.getElementById('question-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('question-btn').click(); }
+});
 document.getElementById('guess-input').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('guess-btn').click(); }
 });
 document.getElementById('answer-yes').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'yes'})); };
 document.getElementById('answer-no').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'no'})); };
+document.getElementById('new-round-btn').onclick = ()=>{
+  const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
+  if(ws && ws.readyState===1) ws.send(JSON.stringify({ type:'draw', categories: cats }));
+};
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
   localStorage.removeItem('qse_myname');

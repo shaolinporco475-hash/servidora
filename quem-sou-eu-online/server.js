@@ -10,7 +10,7 @@ const CATEGORY_POOLS = {
 };
 
 // Estado único, compartilhado por todo mundo que abrir o link (sempre o mesmo grupo).
-let state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingGuess: null };
+let state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, pendingGuess: null, scores: {}, winner: null };
 const socketNames = new Map();
 const lastChatAt = new Map();
 
@@ -39,10 +39,13 @@ function sendState(ws) {
     });
   }
   publicState.mySecret = name && state.assignments ? (state.assignments[name] || null) : null;
+  if (state.pendingQuestion) {
+    publicState.pendingQuestion = { ...state.pendingQuestion };
+    if (state.pendingQuestion.target !== name) publicState.pendingQuestion.question = null;
+  }
   if (state.pendingGuess) {
     publicState.pendingGuess = { ...state.pendingGuess };
     if (state.pendingGuess.target !== name) publicState.pendingGuess.guess = null;
-    if (state.pendingGuess.guesser !== name && state.pendingGuess.target !== name) publicState.pendingGuess.guesser = null;
   }
   ws.send(JSON.stringify({ type: 'state', state: publicState }));
 }
@@ -69,6 +72,7 @@ wss.on('connection', ws => {
       if (state.players.includes(name)) return sendError(ws, 'Já tem alguém com esse nome no grupo.');
       socketNames.set(ws, name);
       state.players.push(name);
+      state.scores[name] = state.scores[name] || 0;
       broadcast();
       return;
     }
@@ -79,8 +83,9 @@ wss.on('connection', ws => {
       const oldIndex = state.players.indexOf(name);
       state.players = state.players.filter(p => p !== name);
       if (state.assignments) delete state.assignments[name];
+      if (state.pendingQuestion && (state.pendingQuestion.asker === name || state.pendingQuestion.target === name)) state.pendingQuestion = null;
       if (state.pendingGuess && (state.pendingGuess.guesser === name || state.pendingGuess.target === name)) state.pendingGuess = null;
-      if (state.players.length === 0) { state.phase = 'lobby'; state.assignments = null; state.turnIndex = 0; }
+      if (state.players.length === 0) { state.phase = 'lobby'; state.assignments = null; state.turnIndex = 0; state.pendingGuess = null; state.winner = null; state.scores = {}; }
       else if (oldIndex >= 0 && oldIndex < state.turnIndex) state.turnIndex--;
       if (state.players.length) state.turnIndex = state.turnIndex % state.players.length;
       socketNames.delete(ws);
@@ -101,19 +106,36 @@ wss.on('connection', ws => {
       state.assignments = assignments;
       state.phase = 'playing';
       state.turnIndex = 0;
+      state.pendingQuestion = null;
       state.pendingGuess = null;
+      state.winner = null;
+      state.players.forEach(p => { state.scores[p] = state.scores[p] || 0; });
       broadcast();
       return;
     }
+    if (msg.type === 'question') {
+      const asker = socketNames.get(ws);
+      const target = String(msg.target || '').trim();
+      const question = String(msg.question || '').trim().slice(0, 120);
+      if (!asker || state.phase !== 'playing') return;
+      if (state.players[state.turnIndex] !== asker) return sendError(ws, 'Não é seu turno.');
+      if (state.pendingQuestion || state.pendingGuess) return sendError(ws, 'Aguarde a resposta antes de continuar.');
+      if (!target || target === asker || !state.players.includes(target)) return sendError(ws, 'Escolha um jogador válido.');
+      if (!question) return sendError(ws, 'Digite uma pergunta.');
+      state.pendingQuestion = { asker, target, question };
+      broadcast();
+      return;
+    }
+
     if (msg.type === 'guess') {
       const guesser = socketNames.get(ws);
       const target = String(msg.target || '').trim();
       const guess = String(msg.guess || '').trim().slice(0, 80);
       if (!guesser || state.phase !== 'playing') return;
       if (state.players[state.turnIndex] !== guesser) return sendError(ws, 'Não é seu turno.');
-      if (state.pendingGuess) return sendError(ws, 'Aguarde a resposta do jogador.');
+      if (state.pendingQuestion || state.pendingGuess) return sendError(ws, 'Aguarde a resposta antes de continuar.');
       if (!target || target === guesser || !state.players.includes(target)) return sendError(ws, 'Escolha um jogador válido.');
-      if (!guess) return sendError(ws, 'Digite um chute.');
+      if (!guess) return sendError(ws, 'Digite o nome que você acha que é.');
       state.pendingGuess = { guesser, target, guess };
       broadcast();
       return;
@@ -121,13 +143,35 @@ wss.on('connection', ws => {
 
     if (msg.type === 'answer') {
       const responder = socketNames.get(ws);
-      if (!responder || !state.pendingGuess) return;
-      if (state.pendingGuess.target !== responder) return sendError(ws, 'Só o jogador que recebeu o chute pode responder.');
-      if (msg.answer !== 'yes' && msg.answer !== 'no') return;
-      if (msg.answer === 'no') {
-        state.turnIndex = (state.turnIndex + 1) % state.players.length;
+      if (!responder) return;
+
+      if (state.pendingQuestion) {
+        if (state.pendingQuestion.target !== responder) return sendError(ws, 'Só o jogador escolhido pode responder.');
+        if (msg.answer !== 'yes' && msg.answer !== 'no') return;
+        state.pendingQuestion = null;
+        if (msg.answer === 'no') state.turnIndex = (state.turnIndex + 1) % state.players.length;
+        broadcast();
+        return;
       }
+
+      if (!state.pendingGuess) return;
+      if (state.pendingGuess.target !== responder) return sendError(ws, 'Só o jogador escolhido pode responder.');
+      if (msg.answer !== 'yes' && msg.answer !== 'no') return;
+      const pending = state.pendingGuess;
       state.pendingGuess = null;
+      if (msg.answer === 'yes') {
+        const secret = state.assignments?.[responder];
+        if (pending.guess.toLocaleLowerCase('pt-BR') === String(secret || '').toLocaleLowerCase('pt-BR')) {
+          state.scores[pending.guesser] = (state.scores[pending.guesser] || 0) + 1;
+          state.winner = pending.guesser;
+          state.phase = 'finished';
+          broadcast();
+          return;
+        }
+        broadcast();
+        return;
+      }
+      state.turnIndex = (state.turnIndex + 1) % state.players.length;
       broadcast();
       return;
     }
@@ -153,10 +197,11 @@ wss.on('connection', ws => {
     const oldIndex = state.players.indexOf(name);
     state.players = state.players.filter(p => p !== name);
     if (state.assignments) delete state.assignments[name];
-    if (state.pendingGuess && (state.pendingGuess.guesser === name || state.pendingGuess.target === name)) state.pendingGuess = null;
+    if (state.pendingQuestion && (state.pendingQuestion.asker === name || state.pendingQuestion.target === name)) state.pendingQuestion = null;
+      if (state.pendingGuess && (state.pendingGuess.guesser === name || state.pendingGuess.target === name)) state.pendingGuess = null;
     socketNames.delete(ws);
     lastChatAt.delete(ws);
-    if (!state.players.length) { state.phase = 'lobby'; state.assignments = null; state.turnIndex = 0; }
+    if (!state.players.length) { state.phase = 'lobby'; state.assignments = null; state.turnIndex = 0; state.pendingQuestion = null; state.pendingGuess = null; }
     else { if (oldIndex >= 0 && oldIndex < state.turnIndex) state.turnIndex--; state.turnIndex %= state.players.length; }
     broadcast();
   });
