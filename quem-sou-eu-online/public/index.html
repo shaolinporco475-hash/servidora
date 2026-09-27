@@ -314,8 +314,8 @@ function renderGame(){
   const waiting=!!q;
   ['question-btn','target-input','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
 
-  document.getElementById('question-card').style.display=finished||isQResponder?'none':'flex';
-  document.getElementById('guess-card').style.display=finished||isQResponder?'none':'flex';
+  document.getElementById('question-card').style.display=finished||isQResponder?'none':'block';
+  document.getElementById('guess-card').style.display=finished||isQResponder?'none':'block';
 
   const status=document.getElementById('question-status');
   const guessStatus=document.getElementById('guess-status');
@@ -338,7 +338,7 @@ function renderGame(){
 
   if(isQResponder){
     // A pergunta aparece somente para quem precisa responder.
-    document.getElementById('answer-card').style.display='flex';
+    document.getElementById('answer-card').style.display='block';
   } else {
     document.getElementById('answer-card').style.display='none';
   }
