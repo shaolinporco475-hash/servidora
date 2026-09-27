@@ -46,6 +46,13 @@ ul.chips li.me{border-color:var(--accent);color:var(--accent)}
 .result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
 .result-list li b{color:var(--accent)}
+.chat-panel{display:none}
+.chat-panel.active{display:flex}
+.chat-msgs{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;padding-right:2px}
+.chat-msg{font-size:14px;line-height:1.4}
+.chat-msg b{color:var(--accent)}
+.chat-msg.me b{color:var(--ok)}
+.chat-empty{color:var(--muted);font-size:13px}
 footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
 </style>
 </head>
@@ -88,14 +95,28 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
     <button class="ghost" id="leave-btn-2">Sair do grupo</button>
   </div>
 
+  <div class="card chat-panel" id="chat-panel">
+    <label>Chat do grupo</label>
+    <div class="chat-msgs" id="chat-msgs"></div>
+    <div class="row">
+      <input type="text" id="chat-input" placeholder="Escreva uma mensagem" maxlength="300">
+      <button id="chat-send" class="small">Enviar</button>
+    </div>
+  </div>
+
   <footer>Cada pessoa no próprio aparelho — o servidor mantém todos sincronizados.</footer>
 </div>
 
 <script>
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
 let myName = localStorage.getItem('qse_myname') || '';
-let state = { players: [], assignments: null, phase: 'lobby' };
+let state = { players: [], assignments: null, phase: 'lobby', chat: [] };
 let ws = null;
+let lastChatCount = 0;
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
 
 function switchStage(id){
   document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
@@ -146,7 +167,13 @@ function showError(text){
 }
 
 function render(){
-  if(!myName){ switchStage('stage-join'); return; }
+  if(!myName){
+    switchStage('stage-join');
+    document.getElementById('chat-panel').classList.remove('active');
+    return;
+  }
+  document.getElementById('chat-panel').classList.add('active');
+  renderChat();
   if(!state.players.includes(myName)){
     // fomos removidos (ou servidor reiniciou) — reentra
     if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName }));
@@ -176,6 +203,34 @@ function render(){
     switchStage('stage-lobby');
   }
 }
+
+function renderChat(){
+  const box = document.getElementById('chat-msgs');
+  const chat = state.chat || [];
+  if(!chat.length){
+    box.innerHTML = '<p class="chat-empty">Nenhuma mensagem ainda.</p>';
+  } else {
+    box.innerHTML = chat.map(m=>{
+      const mine = m.name === myName ? ' me' : '';
+      return '<div class="chat-msg'+mine+'"><b>'+escapeHtml(m.name)+':</b> '+escapeHtml(m.text)+'</div>';
+    }).join('');
+  }
+  if(chat.length !== lastChatCount){
+    box.scrollTop = box.scrollHeight;
+    lastChatCount = chat.length;
+  }
+}
+function sendChat(){
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'chat', name: myName, text }));
+  input.value = '';
+}
+document.getElementById('chat-send').onclick = sendChat;
+document.getElementById('chat-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); sendChat(); }
+});
 
 document.getElementById('join-btn').onclick = ()=>{
   const v = document.getElementById('name-input').value.trim();
