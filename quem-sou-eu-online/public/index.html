@@ -368,7 +368,7 @@ function renderGame(){
   state.players.filter(p=>p!==myName).forEach(p=>{
     const li=document.createElement('li');
     const b=document.createElement('b'); b.textContent=state.assignments?.[p]||'?';
-    const span=document.createElement('span'); span.textContent='Jogador: '+p;
+    const span=document.createElement('span'); span.textContent='Personagem: '+(state.assignments?.[p] || '—');
     li.append(b,span); ul.appendChild(li);
   });
 
