@@ -63,7 +63,7 @@ wss.on('connection', ws => {
     }
 
     if (msg.type === 'draw') {
-      if (state.players.length < 3) return sendError(ws, 'Precisa de pelo menos 3 jogadores.');
+      if (state.players.length < 2) return sendError(ws, 'Precisa de pelo menos 2 jogadores.');
       const cats = Array.isArray(msg.categories) && msg.categories.length
         ? msg.categories.filter(c => CATEGORY_POOLS[c])
         : Object.keys(CATEGORY_POOLS);
