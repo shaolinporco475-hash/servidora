@@ -367,9 +367,8 @@ function renderGame(){
   const ul=document.getElementById('result-list'); ul.innerHTML='';
   state.players.filter(p=>p!==myName).forEach(p=>{
     const li=document.createElement('li');
-    const b=document.createElement('b'); b.textContent=state.assignments?.[p]||'?';
-    const span=document.createElement('span'); span.textContent='Personagem: '+(state.assignments?.[p] || '—');
-    li.append(b,span); ul.appendChild(li);
+    const b=document.createElement('b'); b.textContent=(state.assignments?.[p] || '—')+' : '+p;
+    li.append(b); ul.appendChild(li);
   });
 
   const hist=document.getElementById('question-history'); hist.innerHTML='';
