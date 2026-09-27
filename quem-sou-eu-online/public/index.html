@@ -186,6 +186,7 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
 <script>
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
 let myName = localStorage.getItem('qse_myname') || '';
+let sessionToken = localStorage.getItem('qse_session') || '';
 let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null };
 let ws = null;
 let lastChatCount = 0;
@@ -221,7 +222,7 @@ function connect(){
   ws.onopen = ()=>{
     badge.classList.add('on');
     text.textContent = 'Online — conectado ao servidor';
-    if(myName) ws.send(JSON.stringify({ type:'join', name: myName }));
+    if(myName) ws.send(JSON.stringify({ type:'join', name: myName, token: sessionToken }));
   };
   ws.onclose = ()=>{
     badge.classList.remove('on');
@@ -231,6 +232,10 @@ function connect(){
   ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
   ws.onmessage = ev=>{
     const msg = JSON.parse(ev.data);
+    if(msg.type === 'joined'){
+      if(msg.token){ sessionToken = msg.token; localStorage.setItem('qse_session', sessionToken); }
+      return;
+    }
     if(msg.type === 'state'){ state = msg.state; render(); }
     if(msg.type === 'error'){ showError(msg.message); }
   };
@@ -433,6 +438,8 @@ document.getElementById('finish-room-btn').onclick = ()=>{
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
   localStorage.removeItem('qse_myname');
+  localStorage.removeItem('qse_session');
+  sessionToken = '';
   myName = '';
   switchStage('stage-join');
 }
