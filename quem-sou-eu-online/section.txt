@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quem sou eu?</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+:root{
+  --bg:#f3f5fb;--surface:#ffffff;--surface2:#f8f9fd;--ink:#25253a;--muted:#7d8096;
+  --purple:#7657e8;--purple-dark:#5940c5;--yellow:#ffc857;--green:#35b978;--red:#ed6672;
+  --line:#e7e8f0;--shadow:0 10px 30px rgba(39,32,78,.08);--radius:18px;
+}
+html.dark{--bg:#10111a;--surface:#191b28;--surface2:#202231;--ink:#f3f4fb;--muted:#a7aabd;--line:#303346;--shadow:0 10px 30px rgba(0,0,0,.28)}
+html.dark body{background:radial-gradient(circle at 50% -10%,#252033 0,#151724 42%,#0d0e15 100%)}
+html.dark .connection,html.dark .card,html.dark .player-secret,html.dark button.ghost{background:var(--surface);color:var(--ink)}
+html.dark input[type=text],html.dark select{background:#151722;color:var(--ink);border-color:#34374a}
+html.dark input[type=text]:focus,html.dark select:focus{background:#191b28}
+html.dark .player-secret{background:#1c1e2b}
+html.dark .answer-question{background:#29223e;border-color:#4a3d70}
+html.dark #finished-card{background:#292718;border-color:#5a4b1f}
+
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{margin:0;min-height:100vh;font-family:'Nunito',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:radial-gradient(circle at 50% -10%,#fff 0,#f7f8fd 38%,#eef1f8 100%);padding:0 18px 34px}
+button,input,select{font:inherit}
+button{border:0;cursor:pointer;font-weight:800;transition:.16s ease;touch-action:manipulation}
+button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.02)}
+button:active:not(:disabled){transform:translateY(0) scale(.985)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.wrap{width:100%;max-width:1080px;margin:0 auto}
+.topbar{height:86px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:900;letter-spacing:-.6px}
+.brand-mark{width:42px;height:42px;border-radius:13px;background:var(--purple);color:#fff;display:grid;place-items:center;box-shadow:0 7px 16px rgba(118,87,232,.24);font-size:21px}
+.connection{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:999px;box-shadow:0 3px 12px rgba(30,25,60,.04)}
+.topbar-right{display:flex;align-items:center;gap:8px}.theme-btn{width:42px;min-height:42px;height:42px;padding:0;border-radius:50%;font-size:18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 12px rgba(30,25,60,.04)}
+.connection .dot{width:8px;height:8px;border-radius:50%;background:#b8bbc8}.connection.on .dot{background:var(--green)}
+.hero{padding:20px 0 28px}.hero h1{margin:0;font-size:clamp(32px,6vw,52px);line-height:1;font-weight:900;letter-spacing:-1.8px}.hero p{margin:10px 0 0;color:var(--muted);font-size:16px}
+.stage{display:none}.stage.active{display:flex;flex-direction:column;gap:16px}
+.card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title h2{margin:0;font-size:18px;font-weight:900}.card-title span{font-size:12px;color:var(--muted)}
+label{display:block;color:#6f7289;font-size:13px;font-weight:800;margin:0 0 8px}
+.row{display:flex;gap:10px}
+input[type=text],select{width:100%;min-height:48px;border:2px solid #ececf3;border-radius:13px;background:#fbfbfe;color:var(--ink);padding:11px 14px;outline:none;font-size:15px;transition:.15s}
+input[type=text]:focus,select:focus{border-color:#b7a9f5;background:#fff;box-shadow:0 0 0 4px rgba(118,87,232,.09)}
+button{min-height:48px;border-radius:13px;padding:0 18px;background:var(--purple);color:#fff;box-shadow:0 6px 14px rgba(118,87,232,.2)}
+button.ghost{background:#fff;color:var(--ink);border:2px solid var(--line);box-shadow:none}
+button.small{min-height:44px;padding:0 16px;font-size:14px}
+button.yellow{background:var(--yellow);color:#342b16;box-shadow:0 6px 14px rgba(255,200,87,.22)}
+button.danger{background:#fff;color:var(--red);border:2px solid #f3cbd0;box-shadow:none}
+.error{min-height:18px;margin:8px 0 0;color:var(--red);font-size:13px;font-weight:700;text-align:center}
+.badge{display:none}
+.chips{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.chips li{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:12px 14px;font-weight:800;font-size:14px}.chips li.me{border-color:#c8bdf6;background:#f3f0ff;color:var(--purple)}
+.cat-toggles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.cat-toggles label{margin:0;background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:11px 12px;display:flex;align-items:center;gap:8px;cursor:pointer}.cat-toggles input{accent-color:var(--purple)}
+.lobby-actions{display:flex;gap:10px}.lobby-actions button{flex:1}
+/* jogo */
+#stage-result{gap:16px}
+.players-card{padding-bottom:16px}.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.player-secret{background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px 14px;position:relative;overflow:hidden}.player-secret:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--purple)}
+.player-secret b{display:block;color:var(--purple);font-size:17px;font-weight:900;line-height:1.15}.player-secret span{display:block;color:var(--muted);font-size:12px;margin-top:4px;font-weight:700}
+.result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.result-list li{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}.result-list li b{font-size:15px;color:var(--purple);font-weight:900}.result-list li span{color:var(--muted);font-weight:700}
+.turn-card{background:linear-gradient(135deg,#7657e8,#6749d5);color:#fff;border-radius:18px;padding:19px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 12px 28px rgba(94,69,190,.2)}
+.turn-card .status{color:rgba(255,255,255,.72);text-align:left}.turn-name{font-size:23px;font-weight:900}.turn-card .turn-name{color:#fff}
+.game-columns{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:16px;align-items:start}
+.question-card-inner,.guess-card-inner{display:flex;flex-direction:column;gap:10px}.question-help{margin:2px 0 0;color:var(--muted);font-size:12px;line-height:1.4}
+.answer-box{display:flex;flex-direction:column;gap:12px}.answer-question{background:#f5f1ff;border:1px solid #ded7fb;border-radius:13px;padding:13px;font-size:16px;font-weight:800}.answer-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answer-yes{background:var(--green)}.answer-no{background:var(--red)}
+.question-history{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:290px;overflow:auto}.question-history li{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.35}.question-history .q{font-weight:800}.question-history .a{color:var(--muted);margin-top:4px;font-weight:700}
+.status{font-size:13px;color:var(--muted);line-height:1.45}.center{text-align:center}
+.chat-panel.active{display:flex;flex-direction:column}.chat-msgs{display:flex;flex-direction:column;gap:7px;max-height:190px;overflow:auto;padding:2px}.chat-msg{background:var(--surface2);border-radius:11px;padding:8px 10px;font-size:13px;line-height:1.4}.chat-msg b{color:var(--purple)}.chat-msg.me{background:#f2efff}.chat-msg.me b{color:var(--purple)}.chat-empty{margin:0;color:var(--muted);font-size:13px}.chat-send-row{margin-top:10px}
+.ranking-list{counter-reset:rank}.ranking-list li{padding:13px 14px}.ranking-list li:first-child{background:#fff8df;border-color:#f1df9d}.ranking-list li b{color:var(--ink)}
+.room-actions{display:flex;justify-content:flex-end;gap:10px}.room-actions button{min-width:170px}.host-note{font-size:12px;color:var(--muted);text-align:right;margin-top:-8px}
+#finished-card{display:flex!important;background:#fffdf4;border-color:#f0dfab;text-align:center;align-items:center}.winner-badge{font-size:12px;color:#8a6c18;font-weight:900;text-transform:uppercase;letter-spacing:1px}.winner-name{font-size:30px;color:#6048c9;font-weight:900}
+footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
+@media(max-width:760px){body{padding:0 12px 24px}.topbar{height:72px}.brand{font-size:20px}.brand-mark{width:38px;height:38px}.hero{padding:18px 0 20px}.hero h1{font-size:38px}.cat-toggles{grid-template-columns:1fr}.game-columns{grid-template-columns:1fr}.turn-card{align-items:flex-start;flex-direction:column;gap:5px}.room-actions{flex-direction:column}.room-actions button{width:100%}.lobby-actions,.row{flex-direction:column}.row button{width:100%}.players-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.players-grid{grid-template-columns:1fr}.card{padding:16px}.hero h1{font-size:34px}.connection{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><div class="brand-mark">?</div><span>Quem sou eu?</span></div>
+    <div class="topbar-right"><button class="theme-btn" id="theme-btn" type="button" aria-label="Ativar modo escuro">🌙</button><div class="connection" id="mode-badge"><span class="dot"></span><span id="mode-text">Conectando…</span></div></div>
+  </div>
+  <div class="hero">
+    <h1>Descubra quem você é.</h1>
+    <p>Faça perguntas, elimine possibilidades e tente acertar antes dos outros.</p>
+  </div>
+
+  <div class="stage" id="stage-join">
+    <div class="card">
+      <div class="card-title"><h2>Entrar na sala</h2><span>Jogue com seus amigos</span></div>
+      <label for="name-input">Seu nome</label>
+      <div class="row">
+        <input type="text" id="name-input" placeholder="Como te chamam no grupo" maxlength="24">
+        <button id="join-btn" class="small">Entrar</button>
+      </div>
+      <p class="error" id="join-error"></p>
+    </div>
+  </div>
+
+  <div class="stage" id="stage-lobby">
+    <div class="card">
+      <div class="card-title"><h2>Jogadores</h2><span>Quem está na sala</span></div>
+      <ul class="chips" id="lobby-players"></ul>
+      <p class="hint" style="font-size:12px;color:var(--muted)">Cada amigo abre este mesmo link no próprio aparelho.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><h2>Escolha as categorias</h2><span>O líder define</span></div>
+      <div class="cat-toggles" id="cat-toggles"></div>
+    </div>
+    <p class="error" id="lobby-error"></p>
+    <div class="lobby-actions"><button id="draw-btn" class="yellow">Começar partida</button><button class="ghost" id="leave-btn">Sair da sala</button></div>
+  </div>
+
+  <div class="stage" id="stage-result">
+    <div class="card players-card">
+      <div class="card-title"><h2>Quem é quem?</h2><span>Os personagens dos outros jogadores</span></div>
+      <div class="players-grid" id="result-list"></div>
+    </div>
+
+    <div class="turn-card">
+      <div class="status">Vez de</div>
+      <div class="turn-name" id="turn-name">—</div>
+    </div>
+
+    <div class="card" id="finished-card" style="display:none">
+      <div style="width:100%">
+        <div class="winner-badge">🏆 Fim da rodada</div>
+        <div class="winner-name" id="winner-name">—</div>
+        <p class="status" id="winner-message"></p>
+        <button class="yellow" id="new-round-btn" style="margin-top:12px;display:none">Iniciar nova rodada</button>
+      </div>
+    </div>
+
+    <div class="game-columns">
+      <div>
+        <div class="card" id="question-card">
+          <div class="card-title"><h2>Faça uma pergunta</h2><span>Seu turno</span></div>
+          <div class="question-card-inner">
+            <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
+            <button id="question-btn">Perguntar</button>
+            <p class="question-help">Pergunte algo que possa ser respondido apenas com SIM ou NÃO.</p>
+            <p class="status" id="question-status"></p>
+          </div>
+        </div>
+        <div class="card" id="guess-card" style="margin-top:16px">
+          <div class="card-title"><h2>Você já sabe?</h2><span>Uma tentativa</span></div>
+          <div class="question-card-inner">
+            <input type="text" id="guess-input" placeholder="Digite o personagem" maxlength="80">
+            <button id="guess-btn" class="yellow">Tentar acertar</button>
+            <p class="status" id="guess-status">Se errar, a vez passa automaticamente.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+
+    <div class="card" id="answer-card" style="display:none">
+      <div class="answer-box">
+        <div class="status"><b id="answer-guesser">—</b> fez uma pergunta:</div>
+        <div class="turn-name" id="answer-guess">—</div>
+        <div class="answer-buttons">
+          <button class="answer-yes" id="answer-yes">SIM</button>
+          <button class="answer-no" id="answer-no">NÃO</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>Suas perguntas</h2><span>Histórico da rodada</span></div>
+      <ul class="question-history" id="question-history"></ul>
+    </div>
+      </div>
+    </div>
+
+
+    <div class="card chat-panel" id="chat-panel">
+      <div class="card-title"><h2>Chat da sala</h2><span>Converse com o grupo</span></div>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="row chat-send-row">
+        <input type="text" id="chat-input" placeholder="Escreva uma mensagem" maxlength="300">
+        <button id="chat-send" class="small">Enviar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><h2>Ranking</h2><span>Pontos da sala</span></div>
+      <ol class="result-list ranking-list" id="ranking-list"></ol>
+    </div>
+
+    <div class="room-actions">
+      <button class="ghost" id="finish-room-btn" style="display:none">Finalizar sala</button>
+      <button class="ghost" id="leave-btn-2">Sair da sala</button>
+    </div>
+    <div class="host-note" id="host-note"></div>
+  </div>
+  <footer>Cada pessoa no próprio aparelho — o servidor mantém todos sincronizados.</footer>
+</div>
+
+<script>
+const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
+const savedTheme = localStorage.getItem('qse_theme') || 'light';
+document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+
+function updateThemeButton(){
