@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quem sou eu?</title>
+<style>
+:root{
+  --bg:#241638; --bg2:#150c22; --card:#2f1d4a; --ink:#f3ecff;
+  --muted:#b6a4d6; --accent:#ffb648; --accent2:#ff6b7a; --line:#432a66; --ok:#7bd88f;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{height:100%}
+body{
+  height:100%;margin:0;font-family:'Iowan Old Style','Georgia',serif;
+  background:radial-gradient(1200px 800px at 50% -10%,var(--bg) 0%,var(--bg2) 70%);
+  color:var(--ink);display:flex;flex-direction:column;align-items:center;
+  padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px));
+}
+.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px;flex:1}
+h1{font-size:clamp(28px,7vw,38px);margin:6px 0 0;text-align:center;font-weight:600}
+.sub{color:var(--muted);text-align:center;margin:0 0 4px;font-size:15px;line-height:1.5}
+.badge{align-self:center;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:6px}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.badge.on .dot{background:var(--ok)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+.row{display:flex;gap:8px}
+input[type=text]{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none}
+input[type=text]:focus{border-color:var(--accent)}
+button{font-family:inherit;font-size:16px;border:none;border-radius:10px;cursor:pointer;padding:12px 16px;background:var(--accent);color:#241638;font-weight:600}
+button:active{transform:scale(.98)}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:400}
+button.small{padding:8px 12px;font-size:14px}
+button:disabled{opacity:.4;cursor:not-allowed}
+ul.chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+ul.chips li{background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:14px}
+ul.chips li.me{border-color:var(--accent);color:var(--accent)}
+.cat-toggles{display:flex;flex-wrap:wrap;gap:8px}
+.cat-toggles label{display:flex;align-items:center;gap:6px;font-size:13px;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:7px 12px 7px 10px;cursor:pointer;margin:0}
+.cat-toggles input{accent-color:var(--accent)}
+.error{color:var(--accent2);font-size:13px;min-height:16px;text-align:center}
+.stage{display:none;flex:1;flex-direction:column;gap:16px}
+.stage.active{display:flex}
+.result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
+.result-list li b{color:var(--accent)}
+footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Quem sou eu?</h1>
+  <p class="sub">Cada um recebe um nome secreto que só os outros podem ver.</p>
+  <div class="badge" id="mode-badge"><span class="dot"></span><span id="mode-text">Conectando…</span></div>
+
+  <div class="stage" id="stage-join">
+    <div class="card">
+      <label for="name-input">Seu nome</label>
+      <div class="row">
+        <input type="text" id="name-input" placeholder="Como te chamam no grupo" maxlength="24">
+        <button id="join-btn" class="small">Entrar</button>
+      </div>
+      <p class="error" id="join-error"></p>
+    </div>
+  </div>
+
+  <div class="stage" id="stage-lobby">
+    <div class="card">
+      <label>No grupo agora</label>
+      <ul class="chips" id="lobby-players"></ul>
+      <p class="hint" style="font-size:12px;color:var(--muted)">Cada amigo abre este mesmo link no próprio aparelho.</p>
+    </div>
+    <div class="card">
+      <label>Categorias dos nomes secretos</label>
+      <div class="cat-toggles" id="cat-toggles"></div>
+    </div>
+    <p class="error" id="lobby-error"></p>
+    <button id="draw-btn">🎲 Sortear e revelar</button>
+    <button class="ghost" id="leave-btn">Sair do grupo</button>
+  </div>
+
+  <div class="stage" id="stage-result">
+    <p class="sub" style="margin:0">Todo mundo já sabe seu nome secreto — só você não!</p>
+    <ul class="result-list" id="result-list"></ul>
+    <button id="redraw-btn">Sortear de novo</button>
+    <button class="ghost" id="leave-btn-2">Sair do grupo</button>
+  </div>
+
+  <footer>Cada pessoa no próprio aparelho — o servidor mantém todos sincronizados.</footer>
+</div>
+
+<script>
+const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
+let myName = localStorage.getItem('qse_myname') || '';
+let state = { players: [], assignments: null, phase: 'lobby' };
+let ws = null;
+
+function switchStage(id){
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function renderCatToggles(){
+  const c = document.getElementById('cat-toggles');
+  c.innerHTML = '';
+  CATEGORY_POOLS_NAMES.forEach(cat=>{
+    const lab = document.createElement('label');
+    const inp = document.createElement('input');
+    inp.type='checkbox'; inp.value=cat; inp.checked=true;
+    lab.appendChild(inp); lab.appendChild(document.createTextNode(cat));
+    c.appendChild(lab);
+  });
+}
+renderCatToggles();
+
+function connect(){
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  const badge = document.getElementById('mode-badge');
+  const text = document.getElementById('mode-text');
+
+  ws.onopen = ()=>{
+    badge.classList.add('on');
+    text.textContent = 'Online — conectado ao servidor';
+    if(myName) ws.send(JSON.stringify({ type:'join', name: myName }));
+  };
+  ws.onclose = ()=>{
+    badge.classList.remove('on');
+    text.textContent = 'Conexão perdida — tentando de novo…';
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
+  ws.onmessage = ev=>{
+    const msg = JSON.parse(ev.data);
+    if(msg.type === 'state'){ state = msg.state; render(); }
+    if(msg.type === 'error'){ showError(msg.message); }
+  };
+}
+
+function showError(text){
+  const j = document.getElementById('join-error');
+  const l = document.getElementById('lobby-error');
+  if(document.getElementById('stage-join').classList.contains('active')) j.textContent = text;
+  else l.textContent = text;
+}
+
+function render(){
+  if(!myName){ switchStage('stage-join'); return; }
+  if(!state.players.includes(myName)){
+    // fomos removidos (ou servidor reiniciou) — reentra
+    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName }));
+    switchStage('stage-join');
+    return;
+  }
+  if(state.phase === 'revealed' && state.assignments){
+    const ul = document.getElementById('result-list');
+    ul.innerHTML = '';
+    state.players.filter(p=>p!==myName).forEach(p=>{
+      const li = document.createElement('li');
+      const secret = state.assignments[p] || '?';
+      li.innerHTML = '<span>'+p+'</span><b>'+secret+'</b>';
+      ul.appendChild(li);
+    });
+    switchStage('stage-result');
+  } else {
+    const list = document.getElementById('lobby-players');
+    list.innerHTML = '';
+    state.players.forEach(p=>{
+      const li = document.createElement('li');
+      if(p === myName) li.classList.add('me');
+      li.textContent = p + (p === myName ? ' (você)' : '');
+      list.appendChild(li);
+    });
+    document.getElementById('draw-btn').disabled = state.players.length < 3;
+    switchStage('stage-lobby');
+  }
+}
+
+document.getElementById('join-btn').onclick = ()=>{
+  const v = document.getElementById('name-input').value.trim();
+  document.getElementById('join-error').textContent = '';
+  if(!v) { document.getElementById('join-error').textContent = 'Digite seu nome.'; return; }
+  myName = v;
+  localStorage.setItem('qse_myname', v);
+  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: v }));
+};
+document.getElementById('name-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('join-btn').click(); }
+});
+document.getElementById('draw-btn').onclick = ()=>{
+  document.getElementById('lobby-error').textContent = '';
+  const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
+  ws.send(JSON.stringify({ type:'draw', categories: cats }));
+};
+document.getElementById('redraw-btn').onclick = document.getElementById('draw-btn').onclick;
+function leave(){
+  ws.send(JSON.stringify({ type:'leave', name: myName }));
+  localStorage.removeItem('qse_myname');
+  myName = '';
+  switchStage('stage-join');
+}
+document.getElementById('leave-btn').onclick = leave;
+document.getElementById('leave-btn-2').onclick = leave;
+
+connect();
+</script>
+</body>
+</html>
