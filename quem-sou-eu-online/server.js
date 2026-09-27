@@ -68,6 +68,16 @@ function guessMatches(guess, secret) {
 function resetRoom() {
   state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, questionHistory: [], scores: {}, winner: null, host: null };
 }
+function finishRound() {
+  state.assignments = null;
+  state.phase = 'lobby';
+  state.turnIndex = 0;
+  state.pendingQuestion = null;
+  state.questionHistory = [];
+  state.winner = null;
+  state.chat = [];
+  state.players.forEach(p => { state.scores[p] = state.scores[p] || 0; });
+}
 function sendState(ws) {
   if (ws.readyState !== 1) return;
   const name = socketNames.get(ws);
@@ -184,9 +194,10 @@ wss.on('connection', ws => {
 
     if(msg.type==='finishRoom'){
       const requester=socketNames.get(ws);
-      if(requester!==state.host) return sendError(ws,'Só quem criou a sala pode finalizar.');
-      wss.clients.forEach(client=>{ if(client.readyState===1) client.send(JSON.stringify({type:'room_reset'})); });
-      resetRoom(); broadcast(); return;
+      if(requester!==state.host) return sendError(ws,'Só o líder da sala pode finalizar a partida.');
+      finishRound();
+      broadcast();
+      return;
     }
 
     if(msg.type==='chat'){
