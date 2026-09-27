@@ -15,7 +15,6 @@ let state = {
   host: null
 };
 const socketNames = new Map();
-const playerTokens = new Map();
 const lastChatAt = new Map();
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
@@ -87,6 +86,7 @@ function sendState(ws) {
   publicState.mySecret = name && state.assignments ? (state.assignments[name] || null) : null;
   if (state.pendingQuestion) {
     publicState.pendingQuestion = { ...state.pendingQuestion };
+    if (state.pendingQuestion.target !== name) publicState.pendingQuestion.question = null;
   }
   // Cada jogador só recebe o próprio histórico de perguntas.
   publicState.questionHistory = (state.questionHistory || []).filter(item => item.asker === name);
@@ -114,36 +114,12 @@ wss.on('connection', ws => {
 
     if(msg.type==='join'){
       const name=String(msg.name||'').trim().slice(0,24);
-      const token=String(msg.token||'');
       if(!name) return sendError(ws,'Digite um nome.');
       if(socketNames.has(ws)) return sendError(ws,'Você já está conectado.');
-
-      if(state.players.includes(name)){
-        // Permite que a mesma pessoa recarregue a página sem perder a vaga.
-        // O token fica no localStorage do navegador e impede que outra pessoa
-        // simplesmente assuma o mesmo nome.
-        if(!token || playerTokens.get(name)!==token) return sendError(ws,'Já tem alguém com esse nome no grupo.');
-        for(const [oldWs, oldName] of socketNames.entries()){
-          if(oldName===name){
-            socketNames.delete(oldWs);
-            lastChatAt.delete(oldWs);
-            try { oldWs.close(); } catch {}
-            break;
-          }
-        }
-        socketNames.set(ws,name);
-        ws.send(JSON.stringify({type:'joined',name,token}));
-        sendState(ws);
-        broadcast();
-        return;
-      }
-
-      const newToken=require('crypto').randomUUID();
-      playerTokens.set(name,newToken);
+      if(state.players.includes(name)) return sendError(ws,'Já tem alguém com esse nome no grupo.');
       socketNames.set(ws,name); state.players.push(name); state.scores[name]=state.scores[name]||0;
       if(!state.host) state.host=name;
       if(state.phase==='playing') assignNewPlayer(name);
-      ws.send(JSON.stringify({type:'joined',name,token:newToken}));
       broadcast(); return;
     }
 
@@ -169,12 +145,13 @@ wss.on('connection', ws => {
     }
 
     if(msg.type==='question'){
-      const asker=socketNames.get(ws), question=String(msg.question||'').trim().slice(0,120);
+      const asker=socketNames.get(ws), target=String(msg.target||'').trim(), question=String(msg.question||'').trim().slice(0,120);
       if(!asker || state.phase!=='playing') return;
       if(state.players[state.turnIndex]!==asker) return sendError(ws,'Não é seu turno.');
       if(state.pendingQuestion) return sendError(ws,'Aguarde a resposta antes de continuar.');
+      if(!target||target===asker||!state.players.includes(target)) return sendError(ws,'Escolha um jogador válido.');
       if(!question) return sendError(ws,'Digite uma pergunta.');
-      state.pendingQuestion={asker,question}; broadcast(); return;
+      state.pendingQuestion={asker,target,question}; broadcast(); return;
     }
 
     if(msg.type==='guess'){
@@ -202,15 +179,17 @@ wss.on('connection', ws => {
     }
 
     if(msg.type==='answer'){
-      const responder=socketNames.get(ws);
-      if(!responder || !state.pendingQuestion) return;
-      if(responder===state.pendingQuestion.asker) return sendError(ws,'Quem fez a pergunta não pode respondê-la.');
-      if(msg.answer!=='yes'&&msg.answer!=='no') return;
-      const q=state.pendingQuestion;
-      state.questionHistory.push({asker:q.asker,question:q.question,answer:msg.answer});
-      state.pendingQuestion=null;
-      if(msg.answer==='no') state.turnIndex=(state.turnIndex+1)%state.players.length;
-      broadcast(); return;
+      const responder=socketNames.get(ws); if(!responder) return;
+      if(state.pendingQuestion){
+        if(state.pendingQuestion.target!==responder) return sendError(ws,'Só o jogador escolhido pode responder.');
+        if(msg.answer!=='yes'&&msg.answer!=='no') return;
+        const q=state.pendingQuestion;
+        state.questionHistory.push({asker:q.asker,target:q.target,question:q.question,answer:msg.answer});
+        state.pendingQuestion=null;
+        if(msg.answer==='no') state.turnIndex=(state.turnIndex+1)%state.players.length;
+        broadcast(); return;
+      }
+      return;
     }
 
     if(msg.type==='finishRoom'){

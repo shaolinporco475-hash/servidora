@@ -11,6 +11,15 @@
   --purple:#7657e8;--purple-dark:#5940c5;--yellow:#ffc857;--green:#35b978;--red:#ed6672;
   --line:#e7e8f0;--shadow:0 10px 30px rgba(39,32,78,.08);--radius:18px;
 }
+html.dark{--bg:#10111a;--surface:#191b28;--surface2:#202231;--ink:#f3f4fb;--muted:#a7aabd;--line:#303346;--shadow:0 10px 30px rgba(0,0,0,.28)}
+html.dark body{background:radial-gradient(circle at 50% -10%,#252033 0,#151724 42%,#0d0e15 100%)}
+html.dark .connection,html.dark .card,html.dark .player-secret,html.dark button.ghost{background:var(--surface);color:var(--ink)}
+html.dark input[type=text],html.dark select{background:#151722;color:var(--ink);border-color:#34374a}
+html.dark input[type=text]:focus,html.dark select:focus{background:#191b28}
+html.dark .player-secret{background:#1c1e2b}
+html.dark .answer-question{background:#29223e;border-color:#4a3d70}
+html.dark #finished-card{background:#292718;border-color:#5a4b1f}
+
 *{box-sizing:border-box}
 html{min-height:100%;background:var(--bg)}
 body{margin:0;min-height:100vh;font-family:'Nunito',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:radial-gradient(circle at 50% -10%,#fff 0,#f7f8fd 38%,#eef1f8 100%);padding:0 18px 34px}
@@ -24,6 +33,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .brand{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:900;letter-spacing:-.6px}
 .brand-mark{width:42px;height:42px;border-radius:13px;background:var(--purple);color:#fff;display:grid;place-items:center;box-shadow:0 7px 16px rgba(118,87,232,.24);font-size:21px}
 .connection{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:999px;box-shadow:0 3px 12px rgba(30,25,60,.04)}
+.topbar-right{display:flex;align-items:center;gap:8px}.theme-btn{width:42px;min-height:42px;height:42px;padding:0;border-radius:50%;font-size:18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 12px rgba(30,25,60,.04)}
 .connection .dot{width:8px;height:8px;border-radius:50%;background:#b8bbc8}.connection.on .dot{background:var(--green)}
 .hero{padding:20px 0 28px}.hero h1{margin:0;font-size:clamp(32px,6vw,52px);line-height:1;font-weight:900;letter-spacing:-1.8px}.hero p{margin:10px 0 0;color:var(--muted);font-size:16px}
 .stage{display:none}.stage.active{display:flex;flex-direction:column;gap:16px}
@@ -48,7 +58,7 @@ button.danger{background:#fff;color:var(--red);border:2px solid #f3cbd0;box-shad
 #stage-result{gap:16px}
 .players-card{padding-bottom:16px}.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .player-secret{background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px 14px;position:relative;overflow:hidden}.player-secret:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--purple)}
-.player-secret b{display:block;color:var(--purple);font-size:18px;font-weight:900;line-height:1.25;white-space:normal;overflow-wrap:anywhere}.player-secret span{display:block;color:var(--muted);font-size:12px;margin-top:7px;font-weight:800;border-top:1px solid var(--line);padding-top:6px;white-space:normal;overflow-wrap:anywhere}
+.player-secret b{display:block;color:var(--purple);font-size:17px;font-weight:900;line-height:1.15}.player-secret span{display:block;color:var(--muted);font-size:12px;margin-top:4px;font-weight:700}
 .result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.result-list li{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}.result-list li b{font-size:15px;color:var(--purple);font-weight:900}.result-list li span{color:var(--muted);font-weight:700}
 .turn-card{background:linear-gradient(135deg,#7657e8,#6749d5);color:#fff;border-radius:18px;padding:19px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 12px 28px rgba(94,69,190,.2)}
 .turn-card .status{color:rgba(255,255,255,.72);text-align:left}.turn-name{font-size:23px;font-weight:900}.turn-card .turn-name{color:#fff}
@@ -70,7 +80,7 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
 <div class="wrap">
   <div class="topbar">
     <div class="brand"><div class="brand-mark">?</div><span>Quem sou eu?</span></div>
-    <div class="connection" id="mode-badge"><span class="dot"></span><span id="mode-text">Conectando…</span></div>
+    <div class="topbar-right"><button class="theme-btn" id="theme-btn" type="button" aria-label="Ativar modo escuro">🌙</button><div class="connection" id="mode-badge"><span class="dot"></span><span id="mode-text">Conectando…</span></div></div>
   </div>
   <div class="hero">
     <h1>Descubra quem você é.</h1>
@@ -119,6 +129,7 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
         <div class="card" id="question-card">
           <div class="card-title"><h2>Faça uma pergunta</h2><span>Seu turno</span></div>
           <div class="question-card-inner">
+            <select id="target-input" class="select-input"></select>
             <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
             <button id="question-btn">Perguntar</button>
             <p class="question-help">Pergunte algo que possa ser respondido apenas com SIM ou NÃO.</p>
@@ -158,6 +169,7 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
       <div class="winner-badge">Fim da partida</div>
       <div class="winner-name" id="winner-name">—</div>
       <p class="status" id="winner-message"></p>
+      <button id="new-round-btn">Nova partida</button>
     </div>
 
     <div class="card chat-panel" id="chat-panel">
@@ -185,14 +197,31 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
 
 <script>
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
+const savedTheme = localStorage.getItem('qse_theme') || 'light';
+document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+
+function updateThemeButton(){
+  const btn = document.getElementById('theme-btn');
+  if(!btn) return;
+  const dark = document.documentElement.classList.contains('dark');
+  btn.textContent = dark ? '☀️' : '🌙';
+  btn.setAttribute('aria-label', dark ? 'Ativar modo claro' : 'Ativar modo escuro');
+  btn.title = dark ? 'Modo claro' : 'Modo escuro';
+}
+
 let myName = localStorage.getItem('qse_myname') || '';
 let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null };
 let ws = null;
 let lastChatCount = 0;
 let chatCooldownUntil = 0;
-let sessionToken = localStorage.getItem('qse_session') || '';
-let reconnectTimer = null;
-let joinSent = false;
+
+updateThemeButton();
+document.getElementById('theme-btn').addEventListener('click', ()=>{
+  const dark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', dark);
+  localStorage.setItem('qse_theme', dark ? 'dark' : 'light');
+  updateThemeButton();
+});
 
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -217,53 +246,25 @@ renderCatToggles();
 
 function connect(){
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socket = new WebSocket(proto + '//' + location.host + '/ws');
-  ws = socket;
-  joinSent = false;
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
   const badge = document.getElementById('mode-badge');
   const text = document.getElementById('mode-text');
 
-  socket.onopen = ()=>{
-    if (ws !== socket) return;
+  ws.onopen = ()=>{
     badge.classList.add('on');
     text.textContent = 'Online — conectado ao servidor';
-    if(myName && !joinSent) {
-      joinSent = true;
-      socket.send(JSON.stringify({ type:'join', name: myName, token: sessionToken }));
-    }
+    if(myName) ws.send(JSON.stringify({ type:'join', name: myName }));
   };
-  socket.onclose = ()=>{
-    if (ws !== socket) return;
-    ws = null;
-    joinSent = false;
+  ws.onclose = ()=>{
     badge.classList.remove('on');
     text.textContent = 'Conexão perdida — tentando de novo…';
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connect, 2000);
+    setTimeout(connect, 2000);
   };
-  socket.onerror = ()=>{
-    if (ws === socket) text.textContent = 'Erro de conexão — tentando de novo…';
-  };
-  socket.onmessage = ev=>{
-    if (ws !== socket) return;
-    let msg;
-    try { msg = JSON.parse(ev.data); } catch { return; }
-    if(msg.type === 'joined'){
-      if(msg.name) myName = msg.name;
-      if(msg.token){ sessionToken = msg.token; localStorage.setItem('qse_session', sessionToken); }
-      joinSent = true;
-      render();
-    }
+  ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
+  ws.onmessage = ev=>{
+    const msg = JSON.parse(ev.data);
     if(msg.type === 'state'){ state = msg.state; render(); }
-    if(msg.type === 'error'){
-      showError(msg.message);
-      // Se o token não for mais válido, permite uma nova entrada com um token novo.
-      if(msg.message === 'Já tem alguém com esse nome no grupo.'){
-        sessionToken = '';
-        localStorage.removeItem('qse_session');
-        joinSent = false;
-      }
-    }
+    if(msg.type === 'error'){ showError(msg.message); }
   };
 }
 
@@ -282,6 +283,8 @@ function render(){
   }
   document.getElementById('chat-panel').classList.remove('active');
   if(!state.players.includes(myName)){
+    // fomos removidos (ou servidor reiniciou) — reentra
+    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName }));
     switchStage('stage-join');
     return;
   }
@@ -329,14 +332,20 @@ function renderGame(){
   const turnName=state.players[state.turnIndex]||'—';
   document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
 
+  const target=document.getElementById('target-input');
+  target.innerHTML='';
+  state.players.filter(p=>p!==myName).forEach(p=>{
+    const o=document.createElement('option'); o.value=p; o.textContent=p; target.appendChild(o);
+  });
+
   const isMyTurn=turnName===myName;
   const q=state.pendingQuestion;
-  const isQuestionResponder=!!q && q.asker!==myName;
+  const isQResponder=q&&q.target===myName;
   const waiting=!!q;
-  ['question-btn','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+  ['question-btn','target-input','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
 
-  document.getElementById('question-card').style.display=finished?'none':'block';
-  document.getElementById('guess-card').style.display=finished?'none':'block';
+  document.getElementById('question-card').style.display=finished||isQResponder?'none':'block';
+  document.getElementById('guess-card').style.display=finished||isQResponder?'none':'block';
 
   const status=document.getElementById('question-status');
   const guessStatus=document.getElementById('guess-status');
@@ -347,7 +356,7 @@ function renderGame(){
     status.textContent='Pergunta enviada. Aguarde a resposta.';
     guessStatus.textContent='';
   } else if(waiting){
-    status.textContent=isQuestionResponder?'Responda a pergunta abaixo.':'Aguarde uma resposta.';
+    status.textContent='É sua vez de responder.';
     guessStatus.textContent='';
   } else if(!isMyTurn){
     status.textContent='Aguarde seu turno.';
@@ -357,8 +366,13 @@ function renderGame(){
     guessStatus.textContent='Se você errar a tentativa, o turno passa para o próximo.';
   }
 
-  document.getElementById('answer-card').style.display=isQuestionResponder?'block':'none';
-  if(isQuestionResponder){
+  if(isQResponder){
+    // A pergunta aparece somente para quem precisa responder.
+    document.getElementById('answer-card').style.display='block';
+  } else {
+    document.getElementById('answer-card').style.display='none';
+  }
+  if(isQResponder){
     document.getElementById('answer-guesser').textContent=q.asker;
     document.getElementById('answer-guess').textContent=q.question;
   }
@@ -379,7 +393,7 @@ function renderGame(){
     history.forEach(item=>{
       const li=document.createElement('li');
       const qline=document.createElement('div'); qline.className='q'; qline.textContent=item.question;
-      const aline=document.createElement('div'); aline.className='a'; aline.textContent='Resposta: '+(item.answer==='yes'?'SIM':'NÃO');
+      const aline=document.createElement('div'); aline.className='a'; aline.textContent=item.target+' respondeu '+(item.answer==='yes'?'SIM':'NÃO');
       li.append(qline,aline); hist.appendChild(li);
     });
   }
@@ -431,9 +445,10 @@ document.getElementById('draw-btn').onclick = ()=>{
   ws.send(JSON.stringify({ type:'draw', categories: cats }));
 };
 document.getElementById('question-btn').onclick = ()=>{
+  const target = document.getElementById('target-input').value;
   const question = document.getElementById('question-input').value.trim();
-  if(!question || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type:'question', question }));
+  if(!target || !question || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'question', target, question }));
   document.getElementById('question-input').value = '';
 };
 document.getElementById('guess-btn').onclick = ()=>{

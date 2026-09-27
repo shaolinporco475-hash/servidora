@@ -1,7 +1,6 @@
 
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
 let myName = localStorage.getItem('qse_myname') || '';
-let sessionToken = localStorage.getItem('qse_session') || '';
 let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null };
 let ws = null;
 let lastChatCount = 0;
@@ -30,55 +29,28 @@ renderCatToggles();
 
 function connect(){
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socket = new WebSocket(proto + '//' + location.host + '/ws');
-  ws = socket;
-  joinSent = false;
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
   const badge = document.getElementById('mode-badge');
   const text = document.getElementById('mode-text');
 
-  socket.onopen = ()=>{
-    if (ws !== socket) return;
+  ws.onopen = ()=>{
     badge.classList.add('on');
     text.textContent = 'Online — conectado ao servidor';
-    if(myName && !joinSent) {
-      joinSent = true;
-      socket.send(JSON.stringify({ type:'join', name: myName, token: sessionToken }));
-    }
+    if(myName) ws.send(JSON.stringify({ type:'join', name: myName }));
   };
-  socket.onclose = ()=>{
-    if (ws !== socket) return;
-    ws = null;
-    joinSent = false;
+  ws.onclose = ()=>{
     badge.classList.remove('on');
     text.textContent = 'Conexão perdida — tentando de novo…';
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connect, 2000);
+    setTimeout(connect, 2000);
   };
-  socket.onerror = ()=>{
-    if (ws === socket) text.textContent = 'Erro de conexão — tentando de novo…';
-  };
-  socket.onmessage = ev=>{
-    if (ws !== socket) return;
-    let msg;
-    try { msg = JSON.parse(ev.data); } catch { return; }
-    if(msg.type === 'joined'){
-      if(msg.name) myName = msg.name;
-      if(msg.token){ sessionToken = msg.token; localStorage.setItem('qse_session', sessionToken); }
-      joinSent = true;
-      render();
-    }
+  ws.onerror = ()=>{ text.textContent = 'Erro de conexão — tentando de novo…'; };
+  ws.onmessage = ev=>{
+    const msg = JSON.parse(ev.data);
     if(msg.type === 'state'){ state = msg.state; render(); }
-    if(msg.type === 'error'){
-      showError(msg.message);
-      // Se o token não for mais válido, permite uma nova entrada com um token novo.
-      if(msg.message === 'Já tem alguém com esse nome no grupo.'){
-        sessionToken = '';
-        localStorage.removeItem('qse_session');
-        joinSent = false;
-      }
-    }
+    if(msg.type === 'error'){ showError(msg.message); }
   };
 }
+
 function showError(text){
   const j = document.getElementById('join-error');
   const l = document.getElementById('lobby-error');
@@ -95,7 +67,7 @@ function render(){
   document.getElementById('chat-panel').classList.remove('active');
   if(!state.players.includes(myName)){
     // fomos removidos (ou servidor reiniciou) — reentra
-    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName, token: sessionToken }));
+    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName }));
     switchStage('stage-join');
     return;
   }
@@ -245,7 +217,7 @@ document.getElementById('join-btn').onclick = ()=>{
   if(!v) { document.getElementById('join-error').textContent = 'Digite seu nome.'; return; }
   myName = v;
   localStorage.setItem('qse_myname', v);
-  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: v, token: sessionToken }));
+  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: v }));
 };
 document.getElementById('name-input').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('join-btn').click(); }
@@ -288,7 +260,6 @@ document.getElementById('finish-room-btn').onclick = ()=>{
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
   localStorage.removeItem('qse_myname');
-  localStorage.removeItem('qse_session');
   myName = '';
   switchStage('stage-join');
 }
