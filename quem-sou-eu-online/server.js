@@ -154,7 +154,7 @@ wss.on('connection', ws => {
       if(state.assignments) delete state.assignments[name];
       if(state.pendingQuestion && (state.pendingQuestion.asker===name || state.pendingQuestion.target===name)) state.pendingQuestion=null;
       if(name===state.host) state.host=state.players[0]||null;
-      socketNames.delete(ws); lastChatAt.delete(ws); playerTokens.delete(name);
+      socketNames.delete(ws); lastChatAt.delete(ws);
       if(!state.players.length) resetRoom();
       else { if(oldIndex>=0 && oldIndex<state.turnIndex) state.turnIndex--; state.turnIndex%=state.players.length; }
       broadcast(); return;
@@ -236,7 +236,7 @@ wss.on('connection', ws => {
     if(state.assignments) delete state.assignments[name];
     if(state.pendingQuestion && (state.pendingQuestion.asker===name||state.pendingQuestion.target===name)) state.pendingQuestion=null;
     if(name===state.host) state.host=state.players[0]||null;
-    socketNames.delete(ws); lastChatAt.delete(ws); playerTokens.delete(name);
+    socketNames.delete(ws); lastChatAt.delete(ws);
     if(!state.players.length) resetRoom();
     else { if(oldIndex>=0&&oldIndex<state.turnIndex) state.turnIndex--; state.turnIndex%=state.players.length; }
     broadcast();
