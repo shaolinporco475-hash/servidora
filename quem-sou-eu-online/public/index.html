@@ -48,7 +48,7 @@ button.danger{background:#fff;color:var(--red);border:2px solid #f3cbd0;box-shad
 #stage-result{gap:16px}
 .players-card{padding-bottom:16px}.players-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .player-secret{background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px 14px;position:relative;overflow:hidden}.player-secret:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--purple)}
-.player-secret b{display:block;color:var(--purple);font-size:17px;font-weight:900;line-height:1.15}.player-secret span{display:block;color:var(--muted);font-size:12px;margin-top:4px;font-weight:700}
+.player-secret b{display:block;color:var(--purple);font-size:18px;font-weight:900;line-height:1.25;white-space:normal;overflow-wrap:anywhere}.player-secret span{display:block;color:var(--muted);font-size:12px;margin-top:7px;font-weight:800;border-top:1px solid var(--line);padding-top:6px;white-space:normal;overflow-wrap:anywhere}
 .result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.result-list li{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}.result-list li b{font-size:15px;color:var(--purple);font-weight:900}.result-list li span{color:var(--muted);font-weight:700}
 .turn-card{background:linear-gradient(135deg,#7657e8,#6749d5);color:#fff;border-radius:18px;padding:19px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 12px 28px rgba(94,69,190,.2)}
 .turn-card .status{color:rgba(255,255,255,.72);text-align:left}.turn-name{font-size:23px;font-weight:900}.turn-card .turn-name{color:#fff}
@@ -119,7 +119,6 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
         <div class="card" id="question-card">
           <div class="card-title"><h2>Faça uma pergunta</h2><span>Seu turno</span></div>
           <div class="question-card-inner">
-            <select id="target-input" class="select-input"></select>
             <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
             <button id="question-btn">Perguntar</button>
             <p class="question-help">Pergunte algo que possa ser respondido apenas com SIM ou NÃO.</p>
@@ -159,7 +158,6 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
       <div class="winner-badge">Fim da partida</div>
       <div class="winner-name" id="winner-name">—</div>
       <p class="status" id="winner-message"></p>
-      <button id="new-round-btn">Nova partida</button>
     </div>
 
     <div class="card chat-panel" id="chat-panel">
@@ -302,20 +300,14 @@ function renderGame(){
   const turnName=state.players[state.turnIndex]||'—';
   document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
 
-  const target=document.getElementById('target-input');
-  target.innerHTML='';
-  state.players.filter(p=>p!==myName).forEach(p=>{
-    const o=document.createElement('option'); o.value=p; o.textContent=p; target.appendChild(o);
-  });
-
   const isMyTurn=turnName===myName;
   const q=state.pendingQuestion;
-  const isQResponder=q&&q.target===myName;
+  const isQuestionResponder=!!q && q.asker!==myName;
   const waiting=!!q;
-  ['question-btn','target-input','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+  ['question-btn','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
 
-  document.getElementById('question-card').style.display=finished||isQResponder?'none':'block';
-  document.getElementById('guess-card').style.display=finished||isQResponder?'none':'block';
+  document.getElementById('question-card').style.display=finished?'none':'block';
+  document.getElementById('guess-card').style.display=finished?'none':'block';
 
   const status=document.getElementById('question-status');
   const guessStatus=document.getElementById('guess-status');
@@ -326,7 +318,7 @@ function renderGame(){
     status.textContent='Pergunta enviada. Aguarde a resposta.';
     guessStatus.textContent='';
   } else if(waiting){
-    status.textContent='É sua vez de responder.';
+    status.textContent=isQuestionResponder?'Responda a pergunta abaixo.':'Aguarde uma resposta.';
     guessStatus.textContent='';
   } else if(!isMyTurn){
     status.textContent='Aguarde seu turno.';
@@ -336,13 +328,8 @@ function renderGame(){
     guessStatus.textContent='Se você errar a tentativa, o turno passa para o próximo.';
   }
 
-  if(isQResponder){
-    // A pergunta aparece somente para quem precisa responder.
-    document.getElementById('answer-card').style.display='block';
-  } else {
-    document.getElementById('answer-card').style.display='none';
-  }
-  if(isQResponder){
+  document.getElementById('answer-card').style.display=isQuestionResponder?'block':'none';
+  if(isQuestionResponder){
     document.getElementById('answer-guesser').textContent=q.asker;
     document.getElementById('answer-guess').textContent=q.question;
   }
@@ -415,10 +402,9 @@ document.getElementById('draw-btn').onclick = ()=>{
   ws.send(JSON.stringify({ type:'draw', categories: cats }));
 };
 document.getElementById('question-btn').onclick = ()=>{
-  const target = document.getElementById('target-input').value;
   const question = document.getElementById('question-input').value.trim();
-  if(!target || !question || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type:'question', target, question }));
+  if(!question || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'question', question }));
   document.getElementById('question-input').value = '';
 };
 document.getElementById('guess-btn').onclick = ()=>{
