@@ -101,9 +101,11 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
 
   <div class="stage" id="stage-result">
     <p class="sub" style="margin:0">Cada jogador recebe um turno. Faça perguntas para descobrir quem você é. Quando tiver certeza, tente adivinhar.</p>
+    <div class="card">
+      <label>👤 Quem os outros jogadores são</label>
+      <ul class="result-list" id="result-list"></ul>
+    </div>
     <div class="turn-card">
-      <div class="status">🏆 Ranking da sala</div>
-      <ol class="result-list" id="ranking-list"></ol>
       <div class="status">Turno de</div>
       <div class="turn-name" id="turn-name">—</div>
     </div>
@@ -134,23 +136,25 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
         </div>
       </div>
     </div>
-    <ul class="result-list" id="result-list"></ul>
     <div class="card" id="finished-card" style="display:none;text-align:center">
       <div class="status">🎉 Fim da partida</div>
       <div class="turn-name" id="winner-name">—</div>
       <p class="status" id="winner-message"></p>
       <button id="new-round-btn">🎲 Nova partida</button>
     </div>
-    <button class="ghost" id="leave-btn-2">Sair do grupo</button>
-  </div>
-
-  <div class="card chat-panel" id="chat-panel">
-    <label>Chat do grupo</label>
-    <div class="chat-msgs" id="chat-msgs"></div>
-    <div class="row">
-      <input type="text" id="chat-input" placeholder="Escreva uma mensagem" maxlength="300">
-      <button id="chat-send" class="small">Enviar</button>
+    <div class="card chat-panel" id="chat-panel">
+      <label>💬 Chat do grupo</label>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="row">
+        <input type="text" id="chat-input" placeholder="Escreva uma mensagem" maxlength="300">
+        <button id="chat-send" class="small">Enviar</button>
+      </div>
     </div>
+    <div class="card">
+      <label>🏆 Ranking da sala</label>
+      <ol class="result-list" id="ranking-list"></ol>
+    </div>
+    <button class="ghost" id="leave-btn-2">Sair do grupo</button>
   </div>
 
   <footer>Cada pessoa no próprio aparelho — o servidor mantém todos sincronizados.</footer>
@@ -222,8 +226,7 @@ function render(){
     document.getElementById('chat-panel').classList.remove('active');
     return;
   }
-  document.getElementById('chat-panel').classList.add('active');
-  renderChat();
+  document.getElementById('chat-panel').classList.remove('active');
   if(!state.players.includes(myName)){
     // fomos removidos (ou servidor reiniciou) — reentra
     if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'join', name: myName }));
@@ -232,6 +235,8 @@ function render(){
   }
   if((state.phase === 'playing' || state.phase === 'finished') && state.assignments){
     renderGame();
+    renderChat();
+    document.getElementById('chat-panel').classList.add('active');
     switchStage('stage-result');
   } else {
     const list = document.getElementById('lobby-players');
@@ -316,9 +321,8 @@ function renderGame(){
   ul.innerHTML = '';
   state.players.filter(p=>p!==myName).forEach(p=>{
     const li = document.createElement('li');
-    const secret = state.assignments[p] || '?';
     const span = document.createElement('span'); span.textContent = p;
-    const b = document.createElement('b'); b.textContent = secret;
+    const b = document.createElement('b'); b.textContent = state.assignments[p] || '?';
     li.append(span,b); ul.appendChild(li);
   });
 }
