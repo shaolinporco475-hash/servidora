@@ -129,7 +129,6 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
         <div class="card" id="question-card">
           <div class="card-title"><h2>Faça uma pergunta</h2><span>Seu turno</span></div>
           <div class="question-card-inner">
-            <select id="target-input" class="select-input"></select>
             <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
             <button id="question-btn">Perguntar</button>
             <p class="question-help">Pergunte algo que possa ser respondido apenas com SIM ou NÃO.</p>
@@ -165,12 +164,6 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
       </div>
     </div>
 
-    <div class="card" id="finished-card" style="display:none;text-align:center">
-      <div class="winner-badge">Fim da partida</div>
-      <div class="winner-name" id="winner-name">—</div>
-      <p class="status" id="winner-message"></p>
-      <button id="new-round-btn">Nova partida</button>
-    </div>
 
     <div class="card chat-panel" id="chat-panel">
       <div class="card-title"><h2>Chat da sala</h2><span>Converse com o grupo</span></div>
@@ -319,30 +312,24 @@ function renderGame(){
   });
 
   const finished=state.phase==='finished';
-  document.getElementById('finished-card').style.display=finished?'flex':'none';
   document.getElementById('finish-room-btn').style.display=state.host===myName?'block':'none';
   document.getElementById('host-note').textContent=state.host===myName?'Você é o líder. Só você pode finalizar a partida.':'';
 
+  const turnName=state.players[state.turnIndex]||'—';
   if(finished){
     const winner=state.winner||'—';
-    document.getElementById('winner-name').textContent=winner;
-    document.getElementById('winner-message').textContent=winner===myName?'Você acertou e ganhou 1 ponto.':winner+' acertou e ganhou 1 ponto.';
+    document.getElementById('turn-name').textContent='🏆 '+winner;
+    document.querySelector('.turn-card .status').textContent='Fim da rodada';
+  } else {
+    document.querySelector('.turn-card .status').textContent='Vez de';
+    document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
   }
-
-  const turnName=state.players[state.turnIndex]||'—';
-  document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
-
-  const target=document.getElementById('target-input');
-  target.innerHTML='';
-  state.players.filter(p=>p!==myName).forEach(p=>{
-    const o=document.createElement('option'); o.value=p; o.textContent=p; target.appendChild(o);
-  });
 
   const isMyTurn=turnName===myName;
   const q=state.pendingQuestion;
-  const isQResponder=q&&q.target===myName;
+  const isQResponder=q&&q.asker!==myName;
   const waiting=!!q;
-  ['question-btn','target-input','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+  ['question-btn','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
 
   document.getElementById('question-card').style.display=finished||isQResponder?'none':'block';
   document.getElementById('guess-card').style.display=finished||isQResponder?'none':'block';
@@ -381,7 +368,7 @@ function renderGame(){
   state.players.filter(p=>p!==myName).forEach(p=>{
     const li=document.createElement('li');
     const b=document.createElement('b'); b.textContent=state.assignments?.[p]||'?';
-    const span=document.createElement('span'); span.textContent=p;
+    const span=document.createElement('span'); span.textContent='Jogador: '+p;
     li.append(b,span); ul.appendChild(li);
   });
 
@@ -393,7 +380,7 @@ function renderGame(){
     history.forEach(item=>{
       const li=document.createElement('li');
       const qline=document.createElement('div'); qline.className='q'; qline.textContent=item.question;
-      const aline=document.createElement('div'); aline.className='a'; aline.textContent=item.target+' respondeu '+(item.answer==='yes'?'SIM':'NÃO');
+      const aline=document.createElement('div'); aline.className='a'; aline.textContent=(item.responder||'Alguém')+' respondeu '+(item.answer==='yes'?'SIM':'NÃO');
       li.append(qline,aline); hist.appendChild(li);
     });
   }
@@ -445,10 +432,9 @@ document.getElementById('draw-btn').onclick = ()=>{
   ws.send(JSON.stringify({ type:'draw', categories: cats }));
 };
 document.getElementById('question-btn').onclick = ()=>{
-  const target = document.getElementById('target-input').value;
   const question = document.getElementById('question-input').value.trim();
-  if(!target || !question || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type:'question', target, question }));
+  if(!question || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'question', question }));
   document.getElementById('question-input').value = '';
 };
 document.getElementById('guess-btn').onclick = ()=>{
@@ -466,11 +452,6 @@ document.getElementById('guess-input').addEventListener('keydown', e=>{
 
 document.getElementById('answer-yes').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'yes'})); };
 document.getElementById('answer-no').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'no'})); };
-document.getElementById('new-round-btn').onclick = ()=>{
-  if(state.host !== myName) return;
-  const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
-  if(ws && ws.readyState===1) ws.send(JSON.stringify({ type:'draw', categories: cats }));
-};
 document.getElementById('finish-room-btn').onclick = ()=>{
   if(state.host===myName && ws && ws.readyState===1) ws.send(JSON.stringify({type:'finishRoom'}));
 };
