@@ -12,7 +12,7 @@ const CATEGORY_POOLS = {
 let state = {
   players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0,
   pendingQuestion: null, questionHistory: [], scores: {}, winner: null,
-  host: null
+  host: null, usedGuess: {}
 };
 const socketNames = new Map();
 const lastChatAt = new Map();
@@ -66,7 +66,7 @@ function guessMatches(guess, secret) {
   return levenshtein(a, b) <= maxDistance;
 }
 function resetRoom() {
-  state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, questionHistory: [], scores: {}, winner: null, host: null };
+  state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, questionHistory: [], scores: {}, winner: null, host: null, usedGuess: {} };
 }
 function finishRound() {
   state.assignments = null;
@@ -76,6 +76,7 @@ function finishRound() {
   state.questionHistory = [];
   state.winner = null;
   state.chat = [];
+  state.usedGuess = {};
   state.players.forEach(p => { state.scores[p] = state.scores[p] || 0; });
 }
 function sendState(ws) {
@@ -84,11 +85,8 @@ function sendState(ws) {
   const publicState = { ...state, assignments: {} };
   if (state.assignments) for (const [player, secret] of Object.entries(state.assignments)) if (player !== name) publicState.assignments[player] = secret;
   publicState.mySecret = name && state.assignments ? (state.assignments[name] || null) : null;
-  if (state.pendingQuestion && state.pendingQuestion.asker !== name) {
-    publicState.pendingQuestion = { ...state.pendingQuestion };
-  } else {
-    publicState.pendingQuestion = null;
-  }
+  publicState.pendingQuestion = state.pendingQuestion ? { ...state.pendingQuestion } : null;
+  publicState.iUsedGuess = !!(name && state.usedGuess[name]);
   // Cada jogador só recebe o próprio histórico de perguntas.
   publicState.questionHistory = (state.questionHistory || []).filter(item => item.asker === name);
   // Tentativas são resolvidas imediatamente no servidor, então não há resposta pendente.
@@ -103,7 +101,7 @@ function startRound(categories) {
   if(pool.length < state.players.length) return false;
   const names = shuffle(pool).slice(0,state.players.length);
   state.assignments = {}; state.players.forEach((p,i)=>state.assignments[p]=names[i]);
-  state.phase='playing'; state.turnIndex=0; state.pendingQuestion=null; state.questionHistory=[]; state.winner=null;
+  state.phase='playing'; state.turnIndex=0; state.pendingQuestion=null; state.questionHistory=[]; state.winner=null; state.usedGuess={};
   state.players.forEach(p=>{state.scores[p]=state.scores[p]||0;});
   return true;
 }
@@ -169,10 +167,12 @@ wss.on('connection', ws => {
       if(!guesser || state.phase!=='playing') return;
       if(state.players[state.turnIndex]!==guesser) return sendError(ws,'Não é seu turno.');
       if(state.pendingQuestion) return sendError(ws,'Aguarde a resposta da pergunta antes de tentar acertar.');
+      if(state.usedGuess[guesser]) return sendError(ws,'Você já usou sua única tentativa nesta rodada.');
       if(!guess) return sendError(ws,'Digite o personagem que você acha que é.');
 
       const secret=state.assignments?.[guesser] || '';
       const correct=guessMatches(guess, secret);
+      state.usedGuess[guesser]=true;
       if(correct){
         state.scores[guesser]=(state.scores[guesser]||0)+1;
         state.winner=guesser;
