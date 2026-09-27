@@ -13,18 +13,18 @@
 *{box-sizing:border-box}
 html{height:100%}
 body{
-  height:100%;margin:0;font-family:'Iowan Old Style','Georgia',serif;
-  background:radial-gradient(1200px 800px at 50% -10%,var(--bg) 0%,var(--bg2) 70%);
+  height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;
+  background:var(--bg2);
   color:var(--ink);display:flex;flex-direction:column;align-items:center;
   padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px));
 }
-.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px;flex:1}
+.wrap{width:100%;max-width:500px;display:flex;flex-direction:column;gap:14px;flex:1}
 h1{font-size:clamp(28px,7vw,38px);margin:6px 0 0;text-align:center;font-weight:600}
 .sub{color:var(--muted);text-align:center;margin:0 0 4px;font-size:15px;line-height:1.5}
 .badge{align-self:center;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:6px}
 .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
 .badge.on .dot{background:var(--ok)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
 label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
 .row{display:flex;gap:8px}
 input[type=text]{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none}
@@ -44,13 +44,15 @@ ul.chips li.me{border-color:var(--accent);color:var(--accent)}
 .stage{display:none;flex:1;flex-direction:column;gap:16px}
 .stage.active{display:flex}
 .result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
+.result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
+.result-list li b{font-weight:600}
+.question-history{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:230px;overflow:auto}.question-history li{background:var(--bg2);border-radius:8px;padding:9px 10px;font-size:13px;line-height:1.4}.question-history .q{color:var(--ink)}.question-history .a{color:var(--muted);margin-top:3px}.room-actions{display:flex;gap:8px;flex-wrap:wrap}.room-actions button{flex:1;min-width:150px}.host-note{font-size:12px;color:var(--muted);text-align:center}
 .result-list li b{color:var(--accent)}
 .chat-panel{display:none}
-.turn-card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px}
+.turn-card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:13px}
 .turn-name{color:var(--accent);font-size:20px;font-weight:600;text-align:center}
 .guess-row{display:flex;flex-direction:column;gap:8px}
-.guess-actions{display:flex;gap:8px}
+.select-input{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none}.guess-actions{display:flex;gap:8px}
 .guess-actions button{flex:1}
 .answer-box{display:flex;flex-direction:column;gap:10px}
 .answer-buttons{display:flex;gap:8px}
@@ -100,35 +102,34 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
   </div>
 
   <div class="stage" id="stage-result">
-    <p class="sub" style="margin:0">Cada jogador recebe um turno. Faça perguntas para descobrir quem você é. Quando tiver certeza, tente adivinhar.</p>
     <div class="card">
-      <label>👤 Quem os outros jogadores são</label>
+      <label>Personagens dos outros jogadores</label>
       <ul class="result-list" id="result-list"></ul>
     </div>
+
     <div class="turn-card">
-      <div class="status">Turno de</div>
+      <div class="status">Vez de</div>
       <div class="turn-name" id="turn-name">—</div>
     </div>
+
     <div class="card" id="question-card">
-      <label>Faça uma pergunta <span style="color:var(--muted)">(1 por vez)</span></label>
-      <div class="guess-row">
-        <select id="target-input" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none"></select>
-        <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
-        <button id="question-btn">❓ Fazer pergunta</button>
-      </div>
+      <label>Faça uma pergunta</label>
+      <select id="target-input" class="select-input"></select>
+      <input type="text" id="question-input" placeholder="Ex.: Sou uma pessoa real?" maxlength="120">
+      <button id="question-btn">Fazer pergunta</button>
       <p class="status" id="question-status"></p>
     </div>
+
     <div class="card" id="guess-card">
-      <label>Quando tiver certeza, tente adivinhar</label>
-      <div class="guess-row">
-        <select id="guess-target-input" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none"></select>
-        <input type="text" id="guess-input" placeholder="Acho que sou..." maxlength="80">
-        <button id="guess-btn">🎯 Tentar adivinhar</button>
-      </div>
+      <label>Tentar acertar</label>
+      <select id="guess-target-input" class="select-input"></select>
+      <input type="text" id="guess-input" placeholder="Digite o personagem" maxlength="80">
+      <button id="guess-btn">Tentar acertar</button>
     </div>
+
     <div class="card" id="answer-card" style="display:none">
       <div class="answer-box">
-        <div class="status"><b id="answer-guesser">—</b> recebeu uma pergunta:</div>
+        <div class="status"><b id="answer-guesser">—</b> perguntou:</div>
         <div class="turn-name" id="answer-guess">—</div>
         <div class="answer-buttons">
           <button class="answer-yes" id="answer-yes">SIM</button>
@@ -136,34 +137,46 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
         </div>
       </div>
     </div>
+
+    <div class="card">
+      <label>Histórico de perguntas</label>
+      <ul class="question-history" id="question-history"></ul>
+    </div>
+
     <div class="card" id="finished-card" style="display:none;text-align:center">
-      <div class="status">🎉 Fim da partida</div>
+      <div class="status">Fim da partida</div>
       <div class="turn-name" id="winner-name">—</div>
       <p class="status" id="winner-message"></p>
-      <button id="new-round-btn">🎲 Nova partida</button>
+      <button id="new-round-btn">Nova partida</button>
     </div>
+
     <div class="card chat-panel" id="chat-panel">
-      <label>💬 Chat do grupo</label>
+      <label>Chat</label>
       <div class="chat-msgs" id="chat-msgs"></div>
       <div class="row">
         <input type="text" id="chat-input" placeholder="Escreva uma mensagem" maxlength="300">
         <button id="chat-send" class="small">Enviar</button>
       </div>
     </div>
+
     <div class="card">
-      <label>🏆 Ranking da sala</label>
+      <label>Ranking da sala</label>
       <ol class="result-list" id="ranking-list"></ol>
     </div>
-    <button class="ghost" id="leave-btn-2">Sair do grupo</button>
-  </div>
 
+    <div class="room-actions">
+      <button class="ghost" id="finish-room-btn" style="display:none">Finalizar sala</button>
+      <button class="ghost" id="leave-btn-2">Sair do grupo</button>
+    </div>
+    <div class="host-note" id="host-note"></div>
+  </div>
   <footer>Cada pessoa no próprio aparelho — o servidor mantém todos sincronizados.</footer>
 </div>
 
 <script>
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
 let myName = localStorage.getItem('qse_myname') || '';
-let state = { players: [], assignments: null, phase: 'lobby', chat: [] };
+let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null, pendingGuess: null };
 let ws = null;
 let lastChatCount = 0;
 let chatCooldownUntil = 0;
@@ -209,6 +222,7 @@ function connect(){
   ws.onmessage = ev=>{
     const msg = JSON.parse(ev.data);
     if(msg.type === 'state'){ state = msg.state; render(); }
+    if(msg.type === 'room_reset'){ myName=''; localStorage.removeItem('qse_myname'); state={players:[],assignments:null,phase:'lobby',chat:[],questionHistory:[],scores:{},host:null,winner:null,turnIndex:0,pendingQuestion:null,pendingGuess:null}; switchStage('stage-join'); }
     if(msg.type === 'error'){ showError(msg.message); }
   };
 }
@@ -247,14 +261,15 @@ function render(){
       li.textContent = p + (p === myName ? ' (você)' : '');
       list.appendChild(li);
     });
-    document.getElementById('draw-btn').disabled = state.players.length < 2;
+    document.getElementById('draw-btn').disabled = state.players.length < 2 || state.host !== myName;
+    document.getElementById('draw-btn').textContent = state.host === myName ? 'Começar partida' : 'Aguardando o criador';
     switchStage('stage-lobby');
   }
 }
 
 function renderGame(){
   const ranking = document.getElementById('ranking-list');
-  ranking.innerHTML = '';
+  ranking.innerHTML='';
   [...state.players].sort((a,b)=>(state.scores?.[b]||0)-(state.scores?.[a]||0)).forEach((p,i)=>{
     const li=document.createElement('li');
     const span=document.createElement('span'); span.textContent=(i+1)+'º '+p+(p===myName?' (você)':'');
@@ -262,71 +277,61 @@ function renderGame(){
     li.append(span,b); ranking.appendChild(li);
   });
 
-  const finished = state.phase === 'finished';
-  document.getElementById('finished-card').style.display = finished ? 'block' : 'none';
+  const finished=state.phase==='finished';
+  document.getElementById('finished-card').style.display=finished?'flex':'none';
+  document.getElementById('finish-room-btn').style.display=state.host===myName?'block':'none';
+  document.getElementById('host-note').textContent=state.host===myName?'Você criou a sala. Só você pode finalizar a sala.':'';
   if(finished){
-    const winner = state.winner || '—';
-    document.getElementById('winner-name').textContent = '🏆 '+winner;
-    document.getElementById('winner-message').textContent = winner === myName ? 'Você descobriu quem era e ganhou 1 ponto!' : winner+' descobriu quem era e ganhou 1 ponto!';
+    const winner=state.winner||'—';
+    document.getElementById('winner-name').textContent=winner;
+    document.getElementById('winner-message').textContent=winner===myName?'Você acertou e ganhou 1 ponto.':winner+' acertou e ganhou 1 ponto.';
   }
 
-  const turnName = state.players[state.turnIndex] || '—';
-  document.getElementById('turn-name').textContent = turnName + (turnName === myName ? ' (seu turno)' : '');
+  const turnName=state.players[state.turnIndex]||'—';
+  document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
 
-  const target = document.getElementById('target-input');
-  const guessTarget = document.getElementById('guess-target-input');
-  const current = target.value;
-  const currentGuessTarget = guessTarget.value;
-  [target, guessTarget].forEach(sel=>{
-    sel.innerHTML = '';
-    state.players.filter(p => p !== myName).forEach(p => {
-      const opt = document.createElement('option'); opt.value=p; opt.textContent=p; sel.appendChild(opt);
-    });
-  });
-  if(state.players.includes(current) && current !== myName) target.value = current;
-  if(state.players.includes(currentGuessTarget) && currentGuessTarget !== myName) guessTarget.value = currentGuessTarget;
+  const target=document.getElementById('target-input');
+  const guessTarget=document.getElementById('guess-target-input');
+  [target,guessTarget].forEach(sel=>{sel.innerHTML=''; state.players.filter(p=>p!==myName).forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});});
 
-  const isMyTurn = turnName === myName;
-  const question = state.pendingQuestion;
-  const pendingGuess = state.pendingGuess;
-  const isQuestionResponder = question && question.target === myName;
-  const isGuessResponder = pendingGuess && pendingGuess.target === myName;
-  const isWaiting = !!question || !!pendingGuess;
+  const isMyTurn=turnName===myName;
+  const q=state.pendingQuestion, g=state.pendingGuess;
+  const isQResponder=q&&q.target===myName, isGResponder=g&&g.target===myName, waiting=!!q||!!g;
+  ['question-btn','target-input','question-input','guess-btn','guess-target-input','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+  document.getElementById('answer-card').style.display=(!finished&&(isQResponder||isGResponder))?'flex':'none';
+  document.getElementById('question-card').style.display=(finished||isQResponder||isGResponder)?'none':'flex';
+  document.getElementById('guess-card').style.display=(finished||isQResponder||isGResponder)?'none':'flex';
 
-  document.getElementById('question-btn').disabled = finished || !isMyTurn || isWaiting;
-  document.getElementById('target-input').disabled = finished || !isMyTurn || isWaiting;
-  document.getElementById('question-input').disabled = finished || !isMyTurn || isWaiting;
-  document.getElementById('guess-btn').disabled = finished || !isMyTurn || isWaiting;
-  document.getElementById('guess-target-input').disabled = finished || !isMyTurn || isWaiting;
-  document.getElementById('guess-input').disabled = finished || !isMyTurn || isWaiting;
-  document.getElementById('answer-card').style.display = (!finished && (isQuestionResponder || isGuessResponder)) ? 'flex' : 'none';
-  document.getElementById('question-card').style.display = finished || isQuestionResponder || isGuessResponder ? 'none' : 'flex';
-  document.getElementById('guess-card').style.display = finished || isQuestionResponder || isGuessResponder ? 'none' : 'flex';
+  const status=document.getElementById('question-status');
+  if(finished) status.textContent='A rodada terminou. O ranking continua nesta sala.';
+  else if(q&&q.asker===myName) status.textContent='Pergunta enviada. Aguarde a resposta.';
+  else if(g&&g.guesser===myName) status.textContent='Tentativa enviada. Aguarde a resposta.';
+  else if(waiting) status.textContent='Aguarde a resposta.';
+  else if(!isMyTurn) status.textContent='Aguarde seu turno.';
+  else status.textContent='Faça perguntas de SIM ou NÃO para descobrir seu personagem.';
 
-  const status = document.getElementById('question-status');
-  if (finished) status.textContent = 'A partida terminou. O ranking continua salvo na sala.';
-  else if (question && question.asker === myName) status.textContent = 'Sua pergunta foi enviada. Aguarde a resposta.';
-  else if (pendingGuess && pendingGuess.guesser === myName) status.textContent = 'Sua tentativa foi enviada. Aguarde a resposta.';
-  else if (isWaiting) status.textContent = 'Aguarde a resposta antes de continuar.';
-  else if (!isMyTurn) status.textContent = 'Aguarde seu turno.';
-  else status.textContent = 'Faça perguntas de SIM/NÃO para descobrir quem você é. Quando souber, tente adivinhar.';
-
-  if (isQuestionResponder || isGuessResponder) {
-    const pending = isQuestionResponder ? question : pendingGuess;
-    document.getElementById('answer-guesser').textContent = isQuestionResponder ? pending.asker : pending.guesser;
-    document.getElementById('answer-guess').textContent = isQuestionResponder ? pending.question : 'Acho que sou: '+pending.guess;
+  if(isQResponder||isGResponder){
+    const p=isQResponder?q:g;
+    document.getElementById('answer-guesser').textContent=isQResponder?p.asker:p.guesser;
+    document.getElementById('answer-guess').textContent=isQResponder?p.question:'Tentativa: '+p.guess;
   }
 
-  const ul = document.getElementById('result-list');
-  ul.innerHTML = '';
+  const ul=document.getElementById('result-list'); ul.innerHTML='';
   state.players.filter(p=>p!==myName).forEach(p=>{
-    const li = document.createElement('li');
-    const span = document.createElement('span'); span.textContent = p;
-    const b = document.createElement('b'); b.textContent = state.assignments[p] || '?';
-    li.append(span,b); ul.appendChild(li);
+    const li=document.createElement('li'); const span=document.createElement('span'); const b=document.createElement('b');
+    span.textContent=p; b.textContent=state.assignments?.[p]||'?'; li.append(span,b); ul.appendChild(li);
+  });
+
+  const hist=document.getElementById('question-history'); hist.innerHTML='';
+  const history=state.questionHistory||[];
+  if(!history.length){ const li=document.createElement('li'); li.className='status'; li.textContent='Nenhuma pergunta feita ainda.'; hist.appendChild(li); }
+  else history.forEach(item=>{
+    const li=document.createElement('li');
+    const qline=document.createElement('div'); qline.className='q'; qline.textContent=item.asker+' → '+item.question;
+    const aline=document.createElement('div'); aline.className='a'; aline.textContent=item.target+' respondeu '+(item.answer==='yes'?'SIM':'NÃO');
+    li.append(qline,aline); hist.appendChild(li);
   });
 }
-
 function renderChat(){
   const box = document.getElementById('chat-msgs');
   const chat = state.chat || [];
@@ -396,8 +401,12 @@ document.getElementById('guess-input').addEventListener('keydown', e=>{
 document.getElementById('answer-yes').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'yes'})); };
 document.getElementById('answer-no').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'no'})); };
 document.getElementById('new-round-btn').onclick = ()=>{
+  if(state.host !== myName) return;
   const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
   if(ws && ws.readyState===1) ws.send(JSON.stringify({ type:'draw', categories: cats }));
+};
+document.getElementById('finish-room-btn').onclick = ()=>{
+  if(state.host===myName && ws && ws.readyState===1) ws.send(JSON.stringify({type:'finishRoom'}));
 };
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
