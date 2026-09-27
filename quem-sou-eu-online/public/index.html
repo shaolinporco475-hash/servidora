@@ -44,15 +44,15 @@ ul.chips li.me{border-color:var(--accent);color:var(--accent)}
 .stage{display:none;flex:1;flex-direction:column;gap:16px}
 .stage.active{display:flex}
 .result-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:15px}
+.result-list li{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:14px}.result-list li b{font-size:17px;font-weight:600;color:var(--accent)}.result-list li span{color:var(--muted)}
 .result-list li b{font-weight:600}
 .question-history{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:230px;overflow:auto}.question-history li{background:var(--bg2);border-radius:8px;padding:9px 10px;font-size:13px;line-height:1.4}.question-history .q{color:var(--ink)}.question-history .a{color:var(--muted);margin-top:3px}.room-actions{display:flex;gap:8px;flex-wrap:wrap}.room-actions button{flex:1;min-width:150px}.host-note{font-size:12px;color:var(--muted);text-align:center}
 .result-list li b{color:var(--accent)}
 .chat-panel{display:none}
 .turn-card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:13px}
 .turn-name{color:var(--accent);font-size:20px;font-weight:600;text-align:center}
-.guess-row{display:flex;flex-direction:column;gap:8px}
-.select-input{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none}.guess-actions{display:flex;gap:8px}
+.guess-row{display:flex;flex-direction:column;gap:10px}
+.select-input{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:12px 14px;color:var(--ink);font-family:inherit;font-size:16px;outline:none}.question-history li{border-left:3px solid var(--line)}
 .guess-actions button{flex:1}
 .answer-box{display:flex;flex-direction:column;gap:10px}
 .answer-buttons{display:flex;gap:8px}
@@ -122,14 +122,14 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
 
     <div class="card" id="guess-card">
       <label>Tentar acertar</label>
-      <select id="guess-target-input" class="select-input"></select>
-      <input type="text" id="guess-input" placeholder="Digite o personagem" maxlength="80">
+      <input type="text" id="guess-input" placeholder="Qual personagem você acha que é?" maxlength="80">
       <button id="guess-btn">Tentar acertar</button>
+      <p class="status" id="guess-status"></p>
     </div>
 
     <div class="card" id="answer-card" style="display:none">
       <div class="answer-box">
-        <div class="status"><b id="answer-guesser">—</b> perguntou:</div>
+        <div class="status"><b id="answer-guesser">—</b> fez uma pergunta:</div>
         <div class="turn-name" id="answer-guess">—</div>
         <div class="answer-buttons">
           <button class="answer-yes" id="answer-yes">SIM</button>
@@ -176,7 +176,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
 <script>
 const CATEGORY_POOLS_NAMES = ["Famosos","Filmes","Desenhos"];
 let myName = localStorage.getItem('qse_myname') || '';
-let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null, pendingGuess: null };
+let state = { players: [], assignments: null, phase: 'lobby', chat: [], questionHistory: [], scores: {}, host: null, winner: null, turnIndex: 0, pendingQuestion: null };
 let ws = null;
 let lastChatCount = 0;
 let chatCooldownUntil = 0;
@@ -222,7 +222,7 @@ function connect(){
   ws.onmessage = ev=>{
     const msg = JSON.parse(ev.data);
     if(msg.type === 'state'){ state = msg.state; render(); }
-    if(msg.type === 'room_reset'){ myName=''; localStorage.removeItem('qse_myname'); state={players:[],assignments:null,phase:'lobby',chat:[],questionHistory:[],scores:{},host:null,winner:null,turnIndex:0,pendingQuestion:null,pendingGuess:null}; switchStage('stage-join'); }
+    if(msg.type === 'room_reset'){ myName=''; localStorage.removeItem('qse_myname'); state={players:[],assignments:null,phase:'lobby',chat:[],questionHistory:[],scores:{},host:null,winner:null,turnIndex:0,pendingQuestion:null}; switchStage('stage-join'); }
     if(msg.type === 'error'){ showError(msg.message); }
   };
 }
@@ -281,6 +281,7 @@ function renderGame(){
   document.getElementById('finished-card').style.display=finished?'flex':'none';
   document.getElementById('finish-room-btn').style.display=state.host===myName?'block':'none';
   document.getElementById('host-note').textContent=state.host===myName?'Você criou a sala. Só você pode finalizar a sala.':'';
+
   if(finished){
     const winner=state.winner||'—';
     document.getElementById('winner-name').textContent=winner;
@@ -291,46 +292,70 @@ function renderGame(){
   document.getElementById('turn-name').textContent=turnName+(turnName===myName?' (seu turno)':'');
 
   const target=document.getElementById('target-input');
-  const guessTarget=document.getElementById('guess-target-input');
-  [target,guessTarget].forEach(sel=>{sel.innerHTML=''; state.players.filter(p=>p!==myName).forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;sel.appendChild(o);});});
+  target.innerHTML='';
+  state.players.filter(p=>p!==myName).forEach(p=>{
+    const o=document.createElement('option'); o.value=p; o.textContent=p; target.appendChild(o);
+  });
 
   const isMyTurn=turnName===myName;
-  const q=state.pendingQuestion, g=state.pendingGuess;
-  const isQResponder=q&&q.target===myName, isGResponder=g&&g.target===myName, waiting=!!q||!!g;
-  ['question-btn','target-input','question-input','guess-btn','guess-target-input','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
-  document.getElementById('answer-card').style.display=(!finished&&(isQResponder||isGResponder))?'flex':'none';
-  document.getElementById('question-card').style.display=(finished||isQResponder||isGResponder)?'none':'flex';
-  document.getElementById('guess-card').style.display=(finished||isQResponder||isGResponder)?'none':'flex';
+  const q=state.pendingQuestion;
+  const isQResponder=q&&q.target===myName;
+  const waiting=!!q;
+  ['question-btn','target-input','question-input','guess-btn','guess-input'].forEach(id=>document.getElementById(id).disabled=finished||!isMyTurn||waiting);
+
+  document.getElementById('question-card').style.display=finished||isQResponder?'none':'flex';
+  document.getElementById('guess-card').style.display=finished||isQResponder?'none':'flex';
 
   const status=document.getElementById('question-status');
-  if(finished) status.textContent='A rodada terminou. O ranking continua nesta sala.';
-  else if(q&&q.asker===myName) status.textContent='Pergunta enviada. Aguarde a resposta.';
-  else if(g&&g.guesser===myName) status.textContent='Tentativa enviada. Aguarde a resposta.';
-  else if(waiting) status.textContent='Aguarde a resposta.';
-  else if(!isMyTurn) status.textContent='Aguarde seu turno.';
-  else status.textContent='Faça perguntas de SIM ou NÃO para descobrir seu personagem.';
+  const guessStatus=document.getElementById('guess-status');
+  if(finished){
+    status.textContent='A rodada terminou.';
+    guessStatus.textContent='';
+  } else if(q&&q.asker===myName){
+    status.textContent='Pergunta enviada. Aguarde a resposta.';
+    guessStatus.textContent='';
+  } else if(waiting){
+    status.textContent='É sua vez de responder.';
+    guessStatus.textContent='';
+  } else if(!isMyTurn){
+    status.textContent='Aguarde seu turno.';
+    guessStatus.textContent='';
+  } else {
+    status.textContent='Faça uma pergunta de SIM ou NÃO para descobrir seu personagem.';
+    guessStatus.textContent='Se você errar a tentativa, o turno passa para o próximo.';
+  }
 
-  if(isQResponder||isGResponder){
-    const p=isQResponder?q:g;
-    document.getElementById('answer-guesser').textContent=isQResponder?p.asker:p.guesser;
-    document.getElementById('answer-guess').textContent=isQResponder?p.question:'Tentativa: '+p.guess;
+  if(isQResponder){
+    // A pergunta aparece somente para quem precisa responder.
+    document.getElementById('answer-card').style.display='flex';
+  } else {
+    document.getElementById('answer-card').style.display='none';
+  }
+  if(isQResponder){
+    document.getElementById('answer-guesser').textContent=q.asker;
+    document.getElementById('answer-guess').textContent=q.question;
   }
 
   const ul=document.getElementById('result-list'); ul.innerHTML='';
   state.players.filter(p=>p!==myName).forEach(p=>{
-    const li=document.createElement('li'); const span=document.createElement('span'); const b=document.createElement('b');
-    span.textContent=p; b.textContent=state.assignments?.[p]||'?'; li.append(span,b); ul.appendChild(li);
+    const li=document.createElement('li');
+    const b=document.createElement('b'); b.textContent=state.assignments?.[p]||'?';
+    const span=document.createElement('span'); span.textContent=p;
+    li.append(b,span); ul.appendChild(li);
   });
 
   const hist=document.getElementById('question-history'); hist.innerHTML='';
   const history=state.questionHistory||[];
-  if(!history.length){ const li=document.createElement('li'); li.className='status'; li.textContent='Nenhuma pergunta feita ainda.'; hist.appendChild(li); }
-  else history.forEach(item=>{
-    const li=document.createElement('li');
-    const qline=document.createElement('div'); qline.className='q'; qline.textContent=item.asker+' → '+item.question;
-    const aline=document.createElement('div'); aline.className='a'; aline.textContent=item.target+' respondeu '+(item.answer==='yes'?'SIM':'NÃO');
-    li.append(qline,aline); hist.appendChild(li);
-  });
+  if(!history.length){
+    const li=document.createElement('li'); li.className='status'; li.textContent='Você ainda não fez nenhuma pergunta.'; hist.appendChild(li);
+  } else {
+    history.forEach(item=>{
+      const li=document.createElement('li');
+      const qline=document.createElement('div'); qline.className='q'; qline.textContent=item.question;
+      const aline=document.createElement('div'); aline.className='a'; aline.textContent=item.target+' respondeu '+(item.answer==='yes'?'SIM':'NÃO');
+      li.append(qline,aline); hist.appendChild(li);
+    });
+  }
 }
 function renderChat(){
   const box = document.getElementById('chat-msgs');
@@ -386,10 +411,9 @@ document.getElementById('question-btn').onclick = ()=>{
   document.getElementById('question-input').value = '';
 };
 document.getElementById('guess-btn').onclick = ()=>{
-  const target = document.getElementById('guess-target-input').value;
   const guess = document.getElementById('guess-input').value.trim();
-  if(!target || !guess || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type:'guess', target, guess }));
+  if(!guess || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type:'guess', guess }));
   document.getElementById('guess-input').value = '';
 };
 document.getElementById('question-input').addEventListener('keydown', e=>{
@@ -398,6 +422,7 @@ document.getElementById('question-input').addEventListener('keydown', e=>{
 document.getElementById('guess-input').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('guess-btn').click(); }
 });
+
 document.getElementById('answer-yes').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'yes'})); };
 document.getElementById('answer-no').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'no'})); };
 document.getElementById('new-round-btn').onclick = ()=>{

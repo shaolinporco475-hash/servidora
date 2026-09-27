@@ -11,7 +11,7 @@ const CATEGORY_POOLS = {
 
 let state = {
   players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0,
-  pendingQuestion: null, pendingGuess: null, questionHistory: [], scores: {}, winner: null,
+  pendingQuestion: null, questionHistory: [], scores: {}, winner: null,
   host: null
 };
 const socketNames = new Map();
@@ -33,7 +33,7 @@ function assignNewPlayer(name) {
   state.assignments[name] = availableSecret();
 }
 function resetRoom() {
-  state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, pendingGuess: null, questionHistory: [], scores: {}, winner: null, host: null };
+  state = { players: [], assignments: null, phase: 'lobby', chat: [], turnIndex: 0, pendingQuestion: null, questionHistory: [], scores: {}, winner: null, host: null };
 }
 function sendState(ws) {
   if (ws.readyState !== 1) return;
@@ -45,10 +45,10 @@ function sendState(ws) {
     publicState.pendingQuestion = { ...state.pendingQuestion };
     if (state.pendingQuestion.target !== name) publicState.pendingQuestion.question = null;
   }
-  if (state.pendingGuess) {
-    publicState.pendingGuess = { ...state.pendingGuess };
-    if (state.pendingGuess.target !== name) publicState.pendingGuess.guess = null;
-  }
+  // Cada jogador só recebe o próprio histórico de perguntas.
+  publicState.questionHistory = (state.questionHistory || []).filter(item => item.asker === name);
+  // Tentativas são resolvidas imediatamente no servidor, então não há resposta pendente.
+  publicState.pendingGuess = null;
   ws.send(JSON.stringify({ type:'state', state:publicState }));
 }
 function broadcast(){ wss.clients.forEach(sendState); }
@@ -59,7 +59,7 @@ function startRound(categories) {
   if(pool.length < state.players.length) return false;
   const names = shuffle(pool).slice(0,state.players.length);
   state.assignments = {}; state.players.forEach((p,i)=>state.assignments[p]=names[i]);
-  state.phase='playing'; state.turnIndex=0; state.pendingQuestion=null; state.pendingGuess=null; state.questionHistory=[]; state.winner=null;
+  state.phase='playing'; state.turnIndex=0; state.pendingQuestion=null; state.questionHistory=[]; state.winner=null;
   state.players.forEach(p=>{state.scores[p]=state.scores[p]||0;});
   return true;
 }
@@ -86,7 +86,6 @@ wss.on('connection', ws => {
       state.players=state.players.filter(p=>p!==name);
       if(state.assignments) delete state.assignments[name];
       if(state.pendingQuestion && (state.pendingQuestion.asker===name || state.pendingQuestion.target===name)) state.pendingQuestion=null;
-      if(state.pendingGuess && (state.pendingGuess.guesser===name || state.pendingGuess.target===name)) state.pendingGuess=null;
       if(name===state.host) state.host=state.players[0]||null;
       socketNames.delete(ws); lastChatAt.delete(ws);
       if(!state.players.length) resetRoom();
@@ -106,20 +105,34 @@ wss.on('connection', ws => {
       const asker=socketNames.get(ws), target=String(msg.target||'').trim(), question=String(msg.question||'').trim().slice(0,120);
       if(!asker || state.phase!=='playing') return;
       if(state.players[state.turnIndex]!==asker) return sendError(ws,'Não é seu turno.');
-      if(state.pendingQuestion||state.pendingGuess) return sendError(ws,'Aguarde a resposta antes de continuar.');
+      if(state.pendingQuestion) return sendError(ws,'Aguarde a resposta antes de continuar.');
       if(!target||target===asker||!state.players.includes(target)) return sendError(ws,'Escolha um jogador válido.');
       if(!question) return sendError(ws,'Digite uma pergunta.');
       state.pendingQuestion={asker,target,question}; broadcast(); return;
     }
 
     if(msg.type==='guess'){
-      const guesser=socketNames.get(ws), target=String(msg.target||'').trim(), guess=String(msg.guess||'').trim().slice(0,80);
+      const guesser=socketNames.get(ws);
+      const guess=String(msg.guess||'').trim().slice(0,80);
       if(!guesser || state.phase!=='playing') return;
       if(state.players[state.turnIndex]!==guesser) return sendError(ws,'Não é seu turno.');
-      if(state.pendingQuestion||state.pendingGuess) return sendError(ws,'Aguarde a resposta antes de continuar.');
-      if(!target||target===guesser||!state.players.includes(target)) return sendError(ws,'Escolha um jogador válido.');
-      if(!guess) return sendError(ws,'Digite o nome que você acha que é.');
-      state.pendingGuess={guesser,target,guess}; broadcast(); return;
+      if(state.pendingQuestion) return sendError(ws,'Aguarde a resposta da pergunta antes de tentar acertar.');
+      if(!guess) return sendError(ws,'Digite o personagem que você acha que é.');
+
+      const secret=state.assignments?.[guesser] || '';
+      const correct=guess.localeCompare(String(secret),'pt-BR',{sensitivity:'base'})===0;
+      if(correct){
+        state.scores[guesser]=(state.scores[guesser]||0)+1;
+        state.winner=guesser;
+        state.phase='finished';
+        broadcast();
+        return;
+      }
+
+      // Errou: a tentativa não precisa de resposta de outro jogador.
+      state.turnIndex=(state.turnIndex+1)%state.players.length;
+      broadcast();
+      return;
     }
 
     if(msg.type==='answer'){
@@ -133,19 +146,7 @@ wss.on('connection', ws => {
         if(msg.answer==='no') state.turnIndex=(state.turnIndex+1)%state.players.length;
         broadcast(); return;
       }
-      if(!state.pendingGuess) return;
-      if(state.pendingGuess.target!==responder) return sendError(ws,'Só o jogador escolhido pode responder.');
-      if(msg.answer!=='yes'&&msg.answer!=='no') return;
-      const pending=state.pendingGuess; state.pendingGuess=null;
-      if(msg.answer==='yes'){
-        const secret=state.assignments?.[responder];
-        if(pending.guess.localeCompare(String(secret||''),'pt-BR',{sensitivity:'base'})===0){
-          state.scores[pending.guesser]=(state.scores[pending.guesser]||0)+1;
-          state.winner=pending.guesser; state.phase='finished'; broadcast(); return;
-        }
-      }
-      if(msg.answer==='no') state.turnIndex=(state.turnIndex+1)%state.players.length;
-      broadcast(); return;
+      return;
     }
 
     if(msg.type==='finishRoom'){
@@ -169,7 +170,6 @@ wss.on('connection', ws => {
     state.players=state.players.filter(p=>p!==name);
     if(state.assignments) delete state.assignments[name];
     if(state.pendingQuestion && (state.pendingQuestion.asker===name||state.pendingQuestion.target===name)) state.pendingQuestion=null;
-    if(state.pendingGuess && (state.pendingGuess.guesser===name||state.pendingGuess.target===name)) state.pendingGuess=null;
     if(name===state.host) state.host=state.players[0]||null;
     socketNames.delete(ws); lastChatAt.delete(ws);
     if(!state.players.length) resetRoom();
