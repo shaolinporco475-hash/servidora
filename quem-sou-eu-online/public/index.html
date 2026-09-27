@@ -172,7 +172,7 @@ function render(){
       li.textContent = p + (p === myName ? ' (você)' : '');
       list.appendChild(li);
     });
-    document.getElementById('draw-btn').disabled = state.players.length < 3;
+    document.getElementById('draw-btn').disabled = state.players.length < 2;
     switchStage('stage-lobby');
   }
 }
