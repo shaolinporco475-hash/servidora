@@ -145,6 +145,15 @@ wss.on('connection', ws => {
       broadcast(); return;
     }
 
+    if(msg.type==='newRound'){
+      const requester=socketNames.get(ws);
+      if(requester!==state.host) return sendError(ws,'Só o líder da sala pode iniciar uma nova rodada.');
+      if(state.players.length<2) return sendError(ws,'Precisa de pelo menos 2 jogadores.');
+      if(state.phase!=='finished') return sendError(ws,'A rodada atual ainda não terminou.');
+      if(!startRound(msg.categories)) return sendError(ws,'Escolha mais categorias — não há nomes suficientes.');
+      broadcast(); return;
+    }
+
     if(msg.type==='question'){
       const asker=socketNames.get(ws), question=String(msg.question||'').trim().slice(0,120);
       if(!asker || state.phase!=='playing') return;

@@ -124,6 +124,15 @@ footer{margin:26px 0 0;color:#a0a3b5;font-size:12px;text-align:center}
       <div class="turn-name" id="turn-name">—</div>
     </div>
 
+    <div class="card" id="finished-card" style="display:none">
+      <div style="width:100%">
+        <div class="winner-badge">🏆 Fim da rodada</div>
+        <div class="winner-name" id="winner-name">—</div>
+        <p class="status" id="winner-message"></p>
+        <button class="yellow" id="new-round-btn" style="margin-top:12px;display:none">Iniciar nova rodada</button>
+      </div>
+    </div>
+
     <div class="game-columns">
       <div>
         <div class="card" id="question-card">
@@ -313,6 +322,7 @@ function renderGame(){
 
   const finished=state.phase==='finished';
   document.getElementById('finish-room-btn').style.display=state.host===myName?'block':'none';
+  document.getElementById('new-round-btn').style.display=finished && state.host===myName?'inline-block':'none';
   document.getElementById('host-note').textContent=state.host===myName?'Você é o líder. Só você pode finalizar a partida.':'';
 
   const turnName=state.players[state.turnIndex]||'—';
@@ -453,6 +463,12 @@ document.getElementById('answer-yes').onclick = ()=>{ if(ws && ws.readyState===1
 document.getElementById('answer-no').onclick = ()=>{ if(ws && ws.readyState===1) ws.send(JSON.stringify({type:'answer', answer:'no'})); };
 document.getElementById('finish-room-btn').onclick = ()=>{
   if(state.host===myName && ws && ws.readyState===1) ws.send(JSON.stringify({type:'finishRoom'}));
+};
+document.getElementById('new-round-btn').onclick = ()=>{
+  if(state.host===myName && ws && ws.readyState===1){
+    const cats = Array.from(document.querySelectorAll('#cat-toggles input:checked')).map(i=>i.value);
+    ws.send(JSON.stringify({ type:'newRound', categories: cats }));
+  }
 };
 function leave(){
   ws.send(JSON.stringify({ type:'leave', name: myName }));
